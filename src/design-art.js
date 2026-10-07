@@ -32,41 +32,40 @@ export function brandWordmark() {
   return `<svg class="brand-wordmark" viewBox="${wordmarkViewBox}" aria-hidden="true" focusable="false">${wordmarkPaths}</svg>`;
 }
 
-export function observatoryArt() {
-  return `<div class="observatory" aria-hidden="true"><div class="observatory-halo"></div><svg class="observatory-sculpture" viewBox="0 0 600 580" fill="none">
+// The sculptural mark uses the original logo geometry, rather than a generic globe.
+export function signatureArt() {
+  const glyph = (fill) => monogramPaths.replace(/fill="#14212c"/g, `fill="${fill}"`);
+  const mark = (fill, x = 0, y = 0) => `<svg x="${55+x}" y="${60+y}" width="225" height="203" viewBox="${monogramViewBox}" overflow="visible">${glyph(fill)}</svg>`;
+  return `<div class="signature-art" aria-hidden="true"><svg class="signature-sculpture" viewBox="0 0 600 520" fill="none" focusable="false">
   <defs>
-    <radialGradient id="iris" cx=".31" cy=".24" r=".84"><stop stop-color="#d0fff1"/><stop offset=".28" stop-color="#6bdbcb"/><stop offset=".56" stop-color="#14a5a7"/><stop offset=".82" stop-color="#087f94"/><stop offset="1" stop-color="#074758"/></radialGradient>
-    <radialGradient id="glass-shine" cx=".24" cy=".17" r=".82"><stop stop-color="white" stop-opacity=".85"/><stop offset=".25" stop-color="#e4ffff" stop-opacity=".2"/><stop offset=".75" stop-color="white" stop-opacity="0"/><stop offset="1" stop-color="#062c48" stop-opacity=".45"/></radialGradient>
-    <linearGradient id="chrome" x1="110" y1="80" x2="480" y2="475" gradientUnits="userSpaceOnUse"><stop stop-color="#bad8dc"/><stop offset=".18" stop-color="#ffffff"/><stop offset=".35" stop-color="#d5e6e9"/><stop offset=".5" stop-color="#8facb5"/><stop offset=".56" stop-color="#f5ffff"/><stop offset=".78" stop-color="#bbd2d7"/><stop offset="1" stop-color="#849fa9"/></linearGradient>
-    <linearGradient id="chrome-edge" x1="91" y1="109" x2="500" y2="440" gradientUnits="userSpaceOnUse"><stop stop-color="white"/><stop offset=".45" stop-color="#e8f6f5"/><stop offset="1" stop-color="#6e8d98"/></linearGradient>
-    <linearGradient id="rim" x1="159" y1="107" x2="430" y2="456" gradientUnits="userSpaceOnUse"><stop stop-color="#ecffff"/><stop offset=".4" stop-color="#b1d9d9"/><stop offset=".65" stop-color="#3b7d84"/><stop offset="1" stop-color="#e4fcfa"/></linearGradient>
-    <filter id="ground-blur"><feGaussianBlur stdDeviation="17"/></filter>
-    <filter id="soft-shadow" x="-30%" y="-30%" width="170%" height="170%"><feDropShadow dx="8" dy="28" stdDeviation="15" flood-color="#38606b" flood-opacity=".2"/></filter>
-    <clipPath id="iris-clip"><circle cx="300" cy="270" r="156"/></clipPath>
+    <linearGradient id="signature-glass" x1="80" y1="10" x2="275" y2="295" gradientUnits="userSpaceOnUse"><stop stop-color="#f9fffe" stop-opacity=".92"/><stop offset=".35" stop-color="#d9f8f0" stop-opacity=".63"/><stop offset=".7" stop-color="#78c9c3" stop-opacity=".38"/><stop offset="1" stop-color="#dae8e8" stop-opacity=".72"/></linearGradient>
+    <linearGradient id="signature-metal" x1="0" y1="0" x2=".85" y2="1"><stop stop-color="#e3fff4"/><stop offset=".18" stop-color="#80ddd0"/><stop offset=".4" stop-color="#27978f"/><stop offset=".72" stop-color="#135e68"/><stop offset="1" stop-color="#092e3e"/></linearGradient>
+    <linearGradient id="signature-edge" x1="0" y1="0" x2="340" y2="330" gradientUnits="userSpaceOnUse"><stop stop-color="#a4d4d2"/><stop offset=".42" stop-color="#f6ffff"/><stop offset=".67" stop-color="#65999e"/><stop offset="1" stop-color="#bedfdd"/></linearGradient>
+    <linearGradient id="signature-red" x1="252" y1="-30" x2="340" y2="36" gradientUnits="userSpaceOnUse"><stop stop-color="#ff5265"/><stop offset=".35" stop-color="#e51537"/><stop offset="1" stop-color="#a90d28"/></linearGradient>
+    <linearGradient id="signature-reflection" x1="22" y1="30" x2="228" y2="275" gradientUnits="userSpaceOnUse"><stop stop-color="white" stop-opacity=".85"/><stop offset=".34" stop-color="white" stop-opacity=".1"/><stop offset="1" stop-color="white" stop-opacity="0"/></linearGradient>
+    <filter id="signature-shadow" x="-40%" y="-30%" width="190%" height="200%"><feDropShadow dx="12" dy="26" stdDeviation="17" flood-color="#264c58" flood-opacity=".18"/></filter>
+    <filter id="signature-ground"><feGaussianBlur stdDeviation="15"/></filter>
   </defs>
-  <ellipse cx="304" cy="507" rx="164" ry="24" fill="#537d88" opacity=".19" filter="url(#ground-blur)"/>
-  <g class="sculpture-core" filter="url(#soft-shadow)">
-    <ellipse cx="300" cy="274" rx="242" ry="132" transform="rotate(-36 300 274)" stroke="#91b0b8" stroke-width="24"/>
-    <ellipse cx="299" cy="267" rx="242" ry="132" transform="rotate(-36 299 267)" stroke="url(#chrome)" stroke-width="25"/>
-    <ellipse cx="299" cy="264" rx="242" ry="132" transform="rotate(-36 299 264)" stroke="url(#chrome-edge)" stroke-width="1.5"/>
-    <circle cx="300" cy="280" r="173" fill="#799da7"/>
-    <circle cx="300" cy="270" r="173" fill="url(#rim)"/>
-    <circle cx="300" cy="268" r="165" fill="#216472"/>
-    <circle cx="300" cy="270" r="157" fill="url(#iris)"/>
-    <g clip-path="url(#iris-clip)" stroke="#e5fff7" stroke-opacity=".3" stroke-width="1">
-      <ellipse cx="300" cy="270" rx="52" ry="156" transform="rotate(-22 300 270)"/>
-      <ellipse cx="300" cy="270" rx="110" ry="156" transform="rotate(-22 300 270)"/>
-      <ellipse cx="300" cy="270" rx="156" ry="42" transform="rotate(-22 300 270)"/>
-      <ellipse cx="300" cy="270" rx="156" ry="101" transform="rotate(-22 300 270)"/>
-      <path d="m239 124 122 292m-207-86 292-118"/>
-    </g>
-    <circle cx="300" cy="270" r="156" fill="url(#glass-shine)"/>
-    <path d="M185 199c21-40 62-64 104-67" stroke="white" stroke-opacity=".65" stroke-width="5" stroke-linecap="round"/>
-    <path d="M190 211c22-45 67-72 111-74" stroke="white" stroke-opacity=".25" stroke-width="1.5" stroke-linecap="round"/>
-    <path d="M100 329c-29 38-28 70-6 86 57 43 189-6 295-83 76-55 127-116 128-158" stroke="url(#chrome)" stroke-width="25" stroke-linecap="round"/>
-    <path d="M97 323c-27 34-26 62-5 78 55 40 187-9 292-86 76-55 126-115 127-156" stroke="url(#chrome-edge)" stroke-width="2" stroke-linecap="round"/>
-    <circle cx="367" cy="177" r="5" fill="white" fill-opacity=".9"/>
+  <path d="M70 343 413 218M90 391 433 267" stroke="#84b7b2" stroke-opacity=".14"/>
+  <ellipse cx="315" cy="427" rx="169" ry="19" fill="#345862" fill-opacity=".16" filter="url(#signature-ground)"/>
+  <g transform="matrix(1 -.22 .12 1 111 121)" filter="url(#signature-shadow)">
+    <path d="M22 27H271L345 100V300Q345 320 324 320H34Q14 320 14 300V47Q14 27 22 27Z" fill="url(#signature-edge)"/>
+    <path d="M330 78 345 100V300Q345 320 324 320L312 300Q330 300 330 280Z" fill="#759fa4" fill-opacity=".72"/>
+    <path d="M18 0H253L330 77V282Q330 300 312 300H18Q0 300 0 282V18Q0 0 18 0Z" fill="url(#signature-glass)" stroke="#faffff" stroke-width="2"/>
+    <path d="M253 0V59Q253 77 272 77H330" stroke="white" stroke-opacity=".75" stroke-width="1.4"/>
+    <path d="M19 299H311M329 86V280" stroke="#4d8e94" stroke-opacity=".36" stroke-width="1.4"/>
+    ${mark('#0d4f5e',7,13)}
+    ${mark('#205f6b',4,8)}
+    ${mark('url(#signature-metal)')}
+    <path d="M21 28H153L26 214Z" fill="url(#signature-reflection)"/>
+    <path d="M16 45V18Q16 14 20 14H231" stroke="white" stroke-width="2" stroke-linecap="round" stroke-opacity=".85"/>
+    <path d="M263 20 330-34H389L321 20Z" fill="url(#signature-red)"/>
+    <path d="M321 20 389-34V-24L321 30Z" fill="#a60e2b"/>
+    <path d="M263 20H321V30H263Z" fill="#c21838"/>
+    <path d="M264 20 330-34H389" stroke="#ffb6be" stroke-opacity=".65" stroke-width="1.5"/>
+    <path d="M26 270H84M26 278H58" stroke="#43777d" stroke-opacity=".36" stroke-width="1.2"/>
   </g>
-  <circle cx="507" cy="104" r="5" fill="#27a49d"/><circle cx="92" cy="242" r="3" fill="#6fc6c0"/><path d="M484 404h16m-8-8v16" stroke="#56968f" stroke-width="1.5"/>
-  </svg><div class="art-note art-note-top"><span class="note-dot"></span>هر خبر، یک زاویه تازه</div><div class="art-note art-note-bottom"><span class="art-brand-lockup">${brandWordmark()}<small>جهان را دقیق‌تر ببین.</small></span>${icon('northeast')}</div></div>`;
+  <path d="m473 332 33-25m-6 1h8v8" stroke="#477d82" stroke-opacity=".55" stroke-width="1.5"/>
+  <circle cx="93" cy="234" r="4" fill="#91b7b5"/><circle cx="508" cy="163" r="2.5" fill="#e51537" fill-opacity=".7"/>
+  </svg></div>`;
 }

@@ -38,7 +38,7 @@ export const publicScript = `
   menu?.querySelectorAll('a').forEach(link => link.addEventListener('click', () => setMenu(false)));
   window.matchMedia('(min-width: 601px)').addEventListener('change', event => { if (event.matches) setMenu(false); });
   document.querySelectorAll('img[data-fallback]').forEach(image => {
-    const fallback = () => { if (!image.dataset.fallback) return; const url = image.dataset.fallback; delete image.dataset.fallback; image.src = url; };
+    const fallback = () => { if (!image.dataset.fallback) return; const url = image.dataset.fallback; delete image.dataset.fallback; image.dataset.graphicCover = 'true'; image.src = url; const figure = image.closest('figure.article-cover'); if (figure && !figure.querySelector('figcaption')) { const caption = document.createElement('figcaption'); caption.textContent = 'تصویر گرافیکی تحریریه نگاه جوان'; figure.append(caption); } };
     image.addEventListener('error', fallback);
     if (image.complete && !image.naturalWidth) fallback();
   });

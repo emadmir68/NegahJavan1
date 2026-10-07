@@ -7,6 +7,8 @@ const fmtDate = (v) => {
   catch { return String(v); }
 };
 const imgStyle = (url) => url ? `style="background-image:linear-gradient(180deg,rgba(4,10,20,.08),rgba(4,10,20,.78)),url('${esc(url)}')"` : '';
+const smartImgStyle = (a) => imgStyle(a?.hero_image || (a?.slug ? '/cover/' + encodeURIComponent(a.slug) + '.svg' : ''));
+const readMins = (body='') => Math.max(1, Math.ceil(String(body).trim().split(/\s+/).filter(Boolean).length / 220));
 
 const css = `
 :root{--bg:#07101a;--bg2:#0c1623;--card:rgba(255,255,255,.07);--card2:rgba(255,255,255,.11);--line:rgba(255,255,255,.12);--text:#f5f8fc;--muted:#aeb9c7;--accent:#4fd1c5;--accent2:#7dd3fc;--red:#ff5a67;--amber:#f6c85f;--shadow:0 24px 80px rgba(0,0,0,.32)}
@@ -36,11 +38,11 @@ function footer() {
 }
 
 function card(a) {
-  return `<article class="card glass"><a href="/news/${encodeURIComponent(a.slug)}"><div class="thumb" ${imgStyle(a.hero_image)}></div><div class="card-body"><span class="tag">${esc(CATEGORY_LABELS[a.category] || 'خبر')}</span><h3>${esc(a.title)}</h3><div class="meta"><span>${esc(fmtDate(a.published_at))}</span><span>${Number(a.views||0).toLocaleString('fa-IR')} بازدید</span></div>${a.excerpt?`<p class="excerpt">${esc(a.excerpt)}</p>`:''}</div></a></article>`;
+  return `<article class="card glass"><a href="/news/${encodeURIComponent(a.slug)}"><div class="thumb" ${smartImgStyle(a)}></div><div class="card-body"><span class="tag">${esc(CATEGORY_LABELS[a.category] || 'خبر')}</span><h3>${esc(a.title)}</h3><div class="meta"><span>${esc(fmtDate(a.published_at))}</span><span>${Number(a.views||0).toLocaleString('en-US')} بازدید</span></div>${a.excerpt?`<p class="excerpt">${esc(a.excerpt)}</p>`:''}</div></a></article>`;
 }
 
 function mini(a) {
-  return `<a class="mini glass" href="/news/${encodeURIComponent(a.slug)}"><div class="mini-thumb" ${imgStyle(a.hero_image)}></div><div><span class="tag">${esc(CATEGORY_LABELS[a.category] || 'خبر')}</span><h4>${esc(a.title)}</h4><div class="meta">${esc(fmtDate(a.published_at))}</div></div></a>`;
+  return `<a class="mini glass" href="/news/${encodeURIComponent(a.slug)}"><div class="mini-thumb" ${smartImgStyle(a)}></div><div><span class="tag">${esc(CATEGORY_LABELS[a.category] || 'خبر')}</span><h4>${esc(a.title)}</h4><div class="meta">${esc(fmtDate(a.published_at))}</div></div></a>`;
 }
 
 function section(title, slug, items, subtitle='') {
@@ -49,11 +51,11 @@ function section(title, slug, items, subtitle='') {
 
 export function homePage(data) {
   const hero = data.hero;
-  const heroBg = hero?.hero_image ? imgStyle(hero.hero_image) : '';
+  const heroBg = hero ? smartImgStyle(hero) : '';
   const heroBlock = hero ? `<section class="hero glass" ${heroBg}><div class="hero-content"><span class="eyebrow"><span class="dot"></span>${hero.status==='breaking'?'خبر فوری':'انتخاب سردبیر'}</span><h1>${esc(hero.title)}</h1><p>${esc(hero.excerpt || 'متن کامل خبر و جزئیات بیشتر را در صفحه خبر بخوانید.')}</p><div class="actions"><a class="btn btn-primary" href="/news/${encodeURIComponent(hero.slug)}">مطالعه خبر</a><a class="btn btn-soft" href="#latest">آخرین خبرها</a></div></div></section>` : `<section class="hero glass"><div class="hero-content"><span class="eyebrow"><span class="dot"></span>نسخه جدید نگاه جوان</span><h1>خبر را سریع‌تر نبین؛ روشن‌تر ببین.</h1><p>صفحه اصلی تازه نگاه جوان برای پوشش سیاست، حوادث، اقتصاد، جامعه، فناوری، فرهنگ، ورزش و تحولات بین‌المللی آماده است. اولین خبر را از پنل تحریریه منتشر کنید.</p><div class="actions"><a class="btn btn-primary" href="/editorial">ورود به تحریریه</a></div></div></section>`;
   const tickerItems = data.breaking.length ? data.breaking.map(a=>`<a href="/news/${encodeURIComponent(a.slug)}">${esc(a.title)}</a>`).join('') : `<span>برای نمایش نوار فوری، یک خبر را با وضعیت «فوری» منتشر کنید.</span>`;
   const latest = data.latest || [];
-  const side = latest.slice(3,8);
+  const side = (data.trending?.length ? data.trending : latest.slice(3,8)).slice(0,5);
   const setup = !data.configured ? `<div class="notice">پایگاه D1 هنوز به Worker متصل نشده است. سایت عمومی سالم است؛ پس از اتصال Binding با نام <b>DB</b>، دیتابیس به‌صورت خودکار آماده می‌شود.</div>` : '';
   return shell('صفحه اصلی', `${header()}<main class="wrap"><div class="ticker glass"><div class="ticker-label">فوری</div><div class="ticker-track">${tickerItems}</div></div>${setup}${heroBlock}<section id="latest" class="section"><div class="section-head"><div><div class="section-title">آخرین خبرها</div><div class="section-sub">تازه‌ترین خروجی تحریریه نگاه جوان</div></div><form class="searchbar" action="/search"><input name="q" placeholder="جست‌وجوی خبر…"><button class="btn btn-soft">جست‌وجو</button></form></div>${latest.length?`<div class="split"><div class="grid">${latest.slice(0,3).map(card).join('')}</div><div class="feature-list">${side.map(mini).join('')}</div></div>`:`<div class="empty glass">هنوز خبری منتشر نشده است.</div>`}</section>${section('سیاست','politics',data.sections?.politics||[],'تحولات سیاسی با تفکیک خبر از تحلیل')}${section('حوادث','incidents',data.sections?.incidents||[],'روایت دقیق رویدادها و حوادث مهم')}${section('بین‌الملل','world',data.sections?.world||[],'تحولات جهان و منطقه')}${section('اقتصاد','economy',data.sections?.economy||[],'بازار، انرژی و اقتصاد ایران و جهان')}</main>${footer()}`);
 }
@@ -61,7 +63,7 @@ export function homePage(data) {
 export function articlePage(a) {
   if (!a) return notFoundPage();
   const source = a.source_name || a.source_url ? `<div class="source"><b>منبع:</b> ${a.source_url?`<a href="${esc(a.source_url)}" rel="noopener noreferrer">${esc(a.source_name || a.source_url)}</a>`:esc(a.source_name)}</div>` : '';
-  return shell(a.title, `${header()}<main class="wrap"><article class="article glass"><span class="tag">${esc(CATEGORY_LABELS[a.category] || 'خبر')}</span><h1>${esc(a.title)}</h1><div class="meta"><span>${esc(fmtDate(a.published_at))}</span><span>${Number(a.views||0).toLocaleString('fa-IR')} بازدید</span></div>${a.excerpt?`<p class="excerpt" style="font-size:18px">${esc(a.excerpt)}</p>`:''}${a.hero_image?`<div class="article-cover" ${imgStyle(a.hero_image)}></div>`:''}<div class="article-body">${esc(a.body)}</div>${source}</article></main>${footer()}`);
+  return shell(a.title, `${header()}<main class="wrap"><article class="article glass"><span class="tag">${esc(CATEGORY_LABELS[a.category] || 'خبر')}</span><h1>${esc(a.title)}</h1><div class="meta"><span>${esc(fmtDate(a.published_at))}</span><span>${Number(a.views||0).toLocaleString('en-US')} بازدید</span></div>${a.excerpt?`<p class="excerpt" style="font-size:18px">${esc(a.excerpt)}</p>`:''}${a.hero_image?`<div class="article-cover" ${smartImgStyle(a)}></div>`:''}<div class="article-body">${esc(a.body)}</div>${source}</article></main>${footer()}`);
 }
 
 export function listingPage(title, items, query='') {
@@ -77,7 +79,7 @@ export function editorialPage() {
 const $=s=>document.querySelector(s);const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));let editing=null;
 async function api(url,opt={}){const r=await fetch(url,{headers:{'Content-Type':'application/json',...(opt.headers||{})},...opt});const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error||'خطای سرور');return j}
 async function boot(){try{const d=await api('/api/admin/bootstrap');if(!d.authenticated){$('#login').style.display='block';$('#dash').style.display='none';if(!d.authConfigured)$('#loginError').textContent='ابتدا ADMIN_PASSWORD و AUTH_SECRET را در Cloudflare Secrets تنظیم کنید.';return}$('#login').style.display='none';$('#dash').style.display='block';render(d)}catch(e){$('#loginError').textContent=e.message}}
-function render(d){const s=d.stats||{};$('#stats').innerHTML=[['کل خبرها',s.total||0],['منتشرشده',s.published||0],['پیش‌نویس',s.drafts||0],['فوری',s.breaking||0],['بازدید',s.views||0]].map(x=>'<div class="stat glass"><b>'+Number(x[1]).toLocaleString('fa-IR')+'</b><span>'+x[0]+'</span></div>').join('');const rows=d.articles||[];$('#list').innerHTML=rows.length?rows.map(a=>'<div class="article-row"><div><div style="font-weight:800">'+esc(a.title)+'</div><div class="meta"><span class="status '+esc(a.status)+'">'+({draft:'پیش‌نویس',published:'منتشرشده',breaking:'فوری'}[a.status]||a.status)+'</span><span>'+esc(a.category)+'</span><span>'+esc(a.published_at||a.created_at)+'</span></div></div><div class="row-actions"><button class="tiny" data-edit="'+a.id+'">ویرایش</button><button class="tiny danger" data-del="'+a.id+'">حذف</button></div></div>').join(''):'<div class="empty">هنوز خبری ثبت نشده است.</div>';window.__articles=rows;document.querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>edit(Number(b.dataset.edit)));document.querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>removeArticle(Number(b.dataset.del)))}
+function render(d){const s=d.stats||{};$('#stats').innerHTML=[['کل خبرها',s.total||0],['منتشرشده',s.published||0],['پیش‌نویس',s.drafts||0],['فوری',s.breaking||0],['بازدید',s.views||0]].map(x=>'<div class="stat glass"><b>'+Number(x[1]).toLocaleString('en-US')+'</b><span>'+x[0]+'</span></div>').join('');const rows=d.articles||[];$('#list').innerHTML=rows.length?rows.map(a=>'<div class="article-row"><div><div style="font-weight:800">'+esc(a.title)+'</div><div class="meta"><span class="status '+esc(a.status)+'">'+({draft:'پیش‌نویس',published:'منتشرشده',breaking:'فوری'}[a.status]||a.status)+'</span><span>'+esc(a.category)+'</span><span>'+esc(a.published_at||a.created_at)+'</span></div></div><div class="row-actions"><button class="tiny" data-edit="'+a.id+'">ویرایش</button><button class="tiny danger" data-del="'+a.id+'">حذف</button></div></div>').join(''):'<div class="empty">هنوز خبری ثبت نشده است.</div>';window.__articles=rows;document.querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>edit(Number(b.dataset.edit)));document.querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>removeArticle(Number(b.dataset.del)))}
 function edit(id){const a=window.__articles.find(x=>Number(x.id)===id);if(!a)return;editing=id;for(const k of ['title','slug','excerpt','body','category','status','hero_image','source_name','source_url'])if($('#'+k))$('#'+k).value=a[k]||'';$('#formTitle').textContent='ویرایش خبر';$('#save').textContent='ذخیره تغییرات';scrollTo({top:0,behavior:'smooth'})}
 function resetForm(){editing=null;$('#articleForm').reset();$('#formTitle').textContent='خبر جدید';$('#save').textContent='ثبت خبر'}
 async function removeArticle(id){if(!confirm('این خبر حذف شود؟'))return;try{await api('/api/admin/articles/'+id,{method:'DELETE'});await boot()}catch(e){alert(e.message)}}

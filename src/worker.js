@@ -1,8 +1,6 @@
 import { authConfigured, passwordMatches, createSession, verifySession, sessionCookie, clearSessionCookie, sameOrigin } from './auth.js';
 import { CATEGORY_LABELS, getHomeData, getArticle, listByCategory, searchArticles, adminStats, adminArticles, createArticle, updateArticle, deleteArticle, hasDatabase } from './db.js';
 import { homePage, articlePage, listingPage, notFoundPage, editorialPage } from './ui.js';
-import { normalizePersianText, smartTitle, smartBody, autoExcerpt, inferCategory, readingMinutes, headlineScore } from './smart.js';
-import { coverSvg } from './cover.js';
 
 const html = (body, status=200) => new Response(body, { status, headers: { 'Content-Type':'text/html; charset=utf-8', 'Cache-Control':'no-store', 'X-Content-Type-Options':'nosniff', 'Referrer-Policy':'strict-origin-when-cross-origin' } });
 const json = (data, status=200, headers={}) => new Response(JSON.stringify(data), { status, headers: { 'Content-Type':'application/json; charset=utf-8', 'Cache-Control':'no-store', 'X-Content-Type-Options':'nosniff', ...headers } });
@@ -107,41 +105,6 @@ export default {
     try {
       if (path === '/api/health') {
         return json({ ok:true, service:'NegahJavan', database:hasDatabase(env), auth:authConfigured(env), time:new Date().toISOString() });
-      }
-
-      const coverMatch = path.match(/^\/cover\/([a-z-]+)\/(.+)\.svg$/);
-      if (coverMatch && request.method === 'GET') {
-        const category = coverMatch[1];
-        const title = decodeURIComponent(coverMatch[2]);
-        return new Response(coverSvg(category, title), {
-          headers: {
-            'Content-Type':'image/svg+xml; charset=utf-8',
-            'Cache-Control':'public, max-age=86400',
-            'X-Content-Type-Options':'nosniff'
-          }
-        });
-      }
-
-      if (path === '/api/admin/smart-preview' && request.method === 'POST') {
-        if (!secureWriteRequest(request)) return json({ error:'Origin نامعتبر است' }, 403);
-        if (!(await requireEditor(request, env))) return json({ error:'نیاز به ورود دارید' }, 401);
-        const data = await bodyJson(request);
-        const title = smartTitle(data.title || '');
-        const body = smartBody(data.body || '');
-        const excerpt = normalizePersianText(data.excerpt || '') || autoExcerpt(body, title);
-        const category = data.category && CATEGORY_LABELS[data.category] && data.category !== 'general'
-          ? data.category
-          : inferCategory(title, body);
-        const coverUrl = `/cover/${category}/${encodeURIComponent(title || 'نگاه جوان')}.svg`;
-        return json({
-          title,
-          body,
-          excerpt,
-          category,
-          readingMinutes: readingMinutes(body),
-          headlineScore: headlineScore(title),
-          coverUrl
-        });
       }
 
       if (path === '/api/auth/login' && request.method === 'POST') {

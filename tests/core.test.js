@@ -32,3 +32,19 @@ test('worker keeps private secrets out of source', async () => {
   assert.match(src, /ADMIN_PASSWORD|authConfigured/);
   assert.doesNotMatch(src, /password\s*[:=]\s*["'][^"']{4,}["']/i);
 });
+
+
+test('smart newsroom routes and automatic covers are wired', async () => {
+  const worker = await readFile(new URL('src/worker.js', root), 'utf8');
+  const ui = await readFile(new URL('src/ui.js', root), 'utf8');
+  const db = await readFile(new URL('src/db.js', root), 'utf8');
+  assert.match(worker, /\/api\/admin\/smart-preview/);
+  assert.match(worker, /\/cover\\\//);
+  assert.match(ui, /اصلاح هوشمند متن/);
+  assert.match(ui, /تشخیص هوشمند/);
+  assert.match(ui, /coverPreview/);
+  assert.match(db, /society/);
+  assert.match(db, /technology/);
+  assert.match(db, /culture/);
+  assert.match(db, /sports/);
+});

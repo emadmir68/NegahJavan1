@@ -7,5 +7,12 @@
   "preview_urls": false,
   "vars": {
     "SITE_NAME": "نگاه جوان"
-  }
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "negahjavan1-db",
+      "database_id": "b547715c-791a-465c-a415-2f45cf1061c0"
+    }
+  ]
 }

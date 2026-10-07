@@ -5,6 +5,7 @@ import { homePage, articlePage, listingPage, notFoundPage } from './ui-public.js
 import { vazirmatnBase64 } from './font.js';
 import { coverSvg as renderCoverSvg } from './cover.js';
 import { wordmarkSvg, wordmarkSvgV1, monogramSvg } from './brand-identity.js';
+import { MEDIA_PATH, MediaInputError, mediaUrl, mediaSettings, saveMediaSettings, uploadMedia, serveMedia, validateArticleMedia } from './media-storage.js';
 
 const html = (body, status=200) => new Response(body, { status, headers: { 'Content-Type':'text/html; charset=utf-8', 'Cache-Control':'no-store', 'X-Content-Type-Options':'nosniff', 'Referrer-Policy':'strict-origin-when-cross-origin' } });
 const json = (data, status=200, headers={}) => new Response(JSON.stringify(data), { status, headers: { 'Content-Type':'application/json; charset=utf-8', 'Cache-Control':'no-store', 'X-Content-Type-Options':'nosniff', ...headers } });
@@ -82,7 +83,7 @@ function smartPrepare(data={}) {
   const source_url=safeHttpUrl(data.source_url);
   let source_name=normalizePersianText(data.source_name);
   if (!source_name && source_url) { try { source_name=new URL(source_url).hostname.replace(/^www\./,""); } catch {} }
-  return {...data,title,body,excerpt,category,hero_image:safeHttpUrl(data.hero_image),source_name,source_url};
+  return {...data,title,body,excerpt,category,...('hero_image' in data ? {hero_image:mediaUrl(data.hero_image)} : {}),source_name,source_url};
 }
 
 function xmlEscape(value="") {
@@ -128,9 +129,21 @@ export default {
       if (path === '/api/admin/bootstrap' && request.method === 'GET') {
         const authenticated = await requireEditor(request, env);
         if (!authenticated) return json({ authenticated:false, authConfigured:authConfigured(env), databaseConfigured:hasDatabase(env) });
-        const [stats, articles, edition] = await Promise.all([adminStats(env), adminArticles(env), getHomeEdition(env)]);
-        return json({ authenticated:true, authConfigured:true, databaseConfigured:hasDatabase(env), stats, articles, edition });
+        const [stats, articles, edition, media] = await Promise.all([adminStats(env), adminArticles(env), getHomeEdition(env), mediaSettings(env)]);
+        return json({ authenticated:true, authConfigured:true, databaseConfigured:hasDatabase(env), stats, articles, edition, media });
       }
+
+      if (['/api/admin/media','/api/admin/media-settings'].includes(path) && ['POST','PUT'].includes(request.method)) {
+        if (request.headers.get('Origin') !== url.origin) return json({error:'Origin نامعتبر است'},403);
+        if (!(await requireEditor(request,env))) return json({error:'نیاز به ورود دارید'},401);
+        if (!hasDatabase(env)) return json({error:'دیتابیس در دسترس نیست'},503);
+        if (path === '/api/admin/media' && request.method === 'POST') return json({ok:true,media:await uploadMedia(request,env)},201);
+        if (path === '/api/admin/media-settings' && request.method === 'PUT') return json({ok:true,media:await saveMediaSettings(env,await bodyJson(request))});
+        return json({error:'روش درخواست نامعتبر است'},405);
+      }
+
+      const mediaMatch=path.match(MEDIA_PATH);
+      if(mediaMatch && ['GET','HEAD'].includes(request.method)) return await serveMedia(request,env,mediaMatch[1],await requireEditor(request,env));
 
       if (path === '/api/admin/homepage' && request.method === 'PUT') {
         if (!secureWriteRequest(request)) return json({ error:'Origin نامعتبر است' }, 403);
@@ -153,7 +166,9 @@ export default {
         if (!secureWriteRequest(request)) return json({ error:'Origin نامعتبر است' }, 403);
         if (!(await requireEditor(request, env))) return json({ error:'نیاز به ورود دارید' }, 401);
         if (!hasDatabase(env)) return json({ error:'D1 با Binding نام DB متصل نشده است' }, 503);
-        const data = smartPrepare(await bodyJson(request));
+        const raw = await bodyJson(request);
+        await validateArticleMedia(env,raw);
+        const data = smartPrepare(raw);
         return json({ ok:true, article:await createArticle(env, data) }, 201);
       }
 
@@ -164,7 +179,9 @@ export default {
         if (!hasDatabase(env)) return json({ error:'D1 با Binding نام DB متصل نشده است' }, 503);
         const id = Number(articleApi[1]);
         if (request.method === 'DELETE') return json({ ok:true, article:await deleteArticle(env, id) });
-        return json({ ok:true, article:await updateArticle(env, id, smartPrepare(await bodyJson(request))) });
+        const raw = await bodyJson(request);
+        await validateArticleMedia(env,raw);
+        return json({ ok:true, article:await updateArticle(env, id, smartPrepare(raw)) });
       }
 
       const coverMatch = path.match(/^\/cover\/(.+)\.svg$/);
@@ -216,6 +233,7 @@ export default {
 
       return html(notFoundPage(), 404);
     } catch (error) {
+      if (error instanceof MediaInputError) return path.startsWith('/api/') ? json({error:error.message},error.status) : new Response('Media unavailable',{status:error.status,headers:{'Cache-Control':'no-store'}});
       console.error('NegahJavan error', error);
       if (path.startsWith('/api/')) return json({ error:error?.message || 'خطای داخلی سرور' }, 500);
       return html(`<!doctype html><meta charset="utf-8"><body dir="rtl" style="font-family:Tahoma;background:#07101a;color:white;padding:40px"><h1>خطای موقت</h1><p>سرویس با خطا روبه‌رو شد. لطفاً دوباره تلاش کنید.</p></body>`, 500);

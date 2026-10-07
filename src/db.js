@@ -103,8 +103,8 @@ class EditionInputError extends Error { status = 400; }
 function articleMetadata(value = '{}') {
   try {
     const data = JSON.parse(value);
-    return { author_name:typeof data.author_name === 'string' ? data.author_name.slice(0,120) : '', format:['analysis','report'].includes(data.format) ? data.format : 'news' };
-  } catch { return {author_name:'',format:'news'}; }
+    return { author_name:typeof data.author_name === 'string' ? data.author_name.slice(0,120) : '', format:['analysis','report'].includes(data.format) ? data.format : 'news', video_url:typeof data.video_url==='string' ? data.video_url.slice(0,2048) : '',video_type:['video/mp4','video/webm'].includes(data.video_type)?data.video_type:'video/mp4',video_caption:typeof data.video_caption==='string'?data.video_caption.slice(0,240):'' };
+  } catch { return {author_name:'',format:'news',video_url:'',video_type:'video/mp4',video_caption:''}; }
 }
 
 async function metadataMap(env) {
@@ -154,12 +154,15 @@ async function editionArticles(env, slugs) {
 }
 
 async function saveArticleMetadata(env, id, input) {
-  if (!Object.hasOwn(input, 'author_name') && !Object.hasOwn(input,'format')) return;
+  if (!['author_name','format','video_url','video_type','video_caption'].some(key=>Object.hasOwn(input,key))) return;
   const row = await env.DB.prepare('SELECT value FROM site_settings WHERE key=?').bind('article_meta:' + id).first();
   const previous = articleMetadata(row?.value);
   const data = {
     author_name:Object.hasOwn(input,'author_name') ? normalizePersianText(input.author_name || '').slice(0,120) : previous.author_name,
     format:Object.hasOwn(input,'format') ? (['analysis','report'].includes(input.format) ? input.format : 'news') : previous.format,
+    video_url:Object.hasOwn(input,'video_url') ? String(input.video_url || '').trim().slice(0,2048) : previous.video_url,
+    video_type:Object.hasOwn(input,'video_type') ? (['video/mp4','video/webm'].includes(input.video_type) ? input.video_type : 'video/mp4') : previous.video_type,
+    video_caption:Object.hasOwn(input,'video_caption') ? normalizePersianText(input.video_caption || '').slice(0,240) : previous.video_caption,
   };
   await env.DB.prepare('INSERT INTO site_settings (key,value,updated_at) VALUES (?,?,CURRENT_TIMESTAMP) ON CONFLICT(key) DO UPDATE SET value=excluded.value,updated_at=CURRENT_TIMESTAMP').bind('article_meta:' + id, JSON.stringify(data)).run();
 }

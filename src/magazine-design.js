@@ -1,4 +1,6 @@
 export const magazineStyles = `
+.reader-video{margin:0 0 35px;padding:18px;background:#eef4f2;border:1px solid #d4e4e0;border-radius:18px;min-width:0}.reader-video-label{display:block;font-size:14px;font-weight:750;color:#287463;margin-bottom:12px}.reader-video video{display:block;width:100%;max-height:70vh;aspect-ratio:16/9;border-radius:10px;background:#102529}.reader-video figcaption{font-size:14px;color:#566c70;margin:12px 0;line-height:1.9}.reader-video .text-link{font-size:13px;margin-top:12px}@media(max-width:600px){.reader-video{padding:12px;margin-bottom:26px;border-radius:14px}}
+
 .story-format{display:inline-flex;align-items:center;border-radius:5px;font-size:12px;font-weight:700;padding:2px 7px;line-height:1.6}.story-format-analysis{color:#71648c;background:#efecf5}.story-format-report{color:#89764e;background:#f2efdf}.article-heading>.story-format{margin-inline-start:10px;vertical-align:middle}.story-meta{color:#617d88}.news-timeline time{color:#657e73}
 :root{--paper:#f6f8f8;--ink:#142b35;--muted:#617580;--line:#dce5e6;--accent:#e51537}
 body{background:var(--paper)}

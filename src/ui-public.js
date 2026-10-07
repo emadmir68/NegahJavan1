@@ -3,6 +3,7 @@ import { readingMinutes, autoExcerpt } from './smart.js';
 import { publicStyles, publicScript } from './design-system.js';
 import { icon, brandWordmark, signatureArt } from './design-art.js';
 import { magazineStyles, readerScript } from './magazine-design.js';
+import { mediaUrl } from './media-storage.js';
 
 const esc = (value = '') => String(value ?? '').replace(/[&<>"']/g, character => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[character]));
 const number = value => Number(value || 0).toLocaleString('fa-IR');
@@ -17,9 +18,12 @@ const topics = [
   ['sports', 'رقابت، تیم و قهرمانی'],
 ];
 
+function dateValue(value) {
+  return typeof value==='string' && /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(value) ? value.replace(' ','T')+'Z' : value;
+}
 function dateFa(value, includeTime = false) {
   if (!value) return '';
-  const date = new Date(value);
+  const date = new Date(dateValue(value));
   if (Number.isNaN(date.getTime())) return '';
   return new Intl.DateTimeFormat('fa-IR', {
     day: 'numeric', month: 'long', year: 'numeric',
@@ -42,13 +46,13 @@ const coverUrl = article => '/cover/' + encodeURIComponent(article.slug) + '.svg
 
 function media(article, {className = 'story-media', eager = false} = {}) {
   const fallback = coverUrl(article);
-  const image = safeHttps(article.hero_image);
+  const image = mediaUrl(article.hero_image);
   return `<img class="${className}" src="${esc(image || fallback)}" data-graphic-cover="${!image}" ${image ? `data-fallback="${esc(fallback)}"` : ''} alt="" width="1200" height="675" ${eager ? 'fetchpriority="high" loading="eager"' : 'loading="lazy"'} decoding="async">`;
 }
 
 function shell(title, body, options = {}) {
   const description = options.description || 'نگاه جوان؛ خبر، تحلیل و روایت روشن تحولات ایران و جهان برای نسل امروز.';
-  return `<!doctype html><html lang="fa" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#f5f8f9"><meta name="negahjavan-design" content="signature-20261007"><meta name="negahjavan-brand" content="wordmark-red-v2"><link rel="icon" href="/assets/negahjavan-mark-v1.svg" type="image/svg+xml"><link rel="preload" href="/assets/vazirmatn-v33.woff2" as="font" type="font/woff2" crossorigin><title>${esc(title)} | نگاه جوان</title><meta name="description" content="${esc(description)}">${options.noindex ? '<meta name="robots" content="noindex,follow">' : ''}<meta property="og:locale" content="fa_IR"><meta property="og:site_name" content="نگاه جوان"><meta property="og:title" content="${esc(title)}"><meta property="og:description" content="${esc(description)}"><style>${publicStyles}${magazineStyles}</style></head><body id="top" data-design="signature-20261007"><a class="skip-link" href="#content">رفتن به محتوای اصلی</a>${body}<script>${publicScript}${readerScript}</script></body></html>`;
+  return `<!doctype html><html lang="fa" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#f5f8f9"><meta name="negahjavan-design" content="media-20261007"><meta name="negahjavan-brand" content="wordmark-red-v2"><link rel="icon" href="/assets/negahjavan-mark-v1.svg" type="image/svg+xml"><link rel="preload" href="/assets/vazirmatn-v33.woff2" as="font" type="font/woff2" crossorigin><title>${esc(title)} | نگاه جوان</title><meta name="description" content="${esc(description)}">${options.noindex ? '<meta name="robots" content="noindex,follow">' : ''}<meta property="og:locale" content="fa_IR"><meta property="og:site_name" content="نگاه جوان"><meta property="og:title" content="${esc(title)}"><meta property="og:description" content="${esc(description)}"><style>${publicStyles}${magazineStyles}</style></head><body id="top" data-design="media-20261007"><a class="skip-link" href="#content">رفتن به محتوای اصلی</a>${body}<script>${publicScript}${readerScript}</script></body></html>`;
 }
 
 function header(current = '') {
@@ -181,7 +185,7 @@ export function listingPage(title, items = [], query = '') {
 export function articlePage(article) {
   if (!article) return notFoundPage();
   const key = categoryKey(article);
-  const hasPhoto = Boolean(safeHttps(article.hero_image));
+  const hasPhoto = Boolean(mediaUrl(article.hero_image));
   const sourceUrl = safeHttps(article.source_url);
   const parts = String(article.body || '').split(/\n{2,}/).map(part => part.trim()).filter(Boolean);
   const headings = [];
@@ -194,12 +198,16 @@ export function articlePage(article) {
     return `<p>${esc(part)}</p>`;
   }).join('');
   const summary = article.excerpt || autoExcerpt(parts.filter(part => !/^## /.test(part)).join('\n\n'), article.title || '');
+  const flatText = value => String(value || '').replace(/\s+/g,' ').trim();
+  const showSummary = summary && flatText(summary) !== flatText(parts.filter(part => !/^## /.test(part)).join(' '));
   const source = article.source_name || sourceUrl ? `<div class="source">منبع روایت: ${sourceUrl ? `<a href="${esc(sourceUrl)}" rel="noopener noreferrer" target="_blank">${esc(article.source_name || new URL(sourceUrl).hostname)}</a>` : esc(article.source_name)}</div>` : '';
-  const updated = article.updated_at && new Date(article.updated_at) > new Date(article.published_at) ? `<span>به‌روزرسانی: <time datetime="${esc(article.updated_at)}">${dateFa(article.updated_at,true)}</time></span>` : '';
+  const updated = article.updated_at && new Date(dateValue(article.updated_at)) - new Date(dateValue(article.published_at)) >= 60000 ? `<span>به‌روزرسانی: <time datetime="${esc(dateValue(article.updated_at))}">${dateFa(article.updated_at,true)}</time></span>` : '';
+  const videoUrl = mediaUrl(article.video_url);
+  const video = videoUrl ? `<figure class="reader-video"><span class="reader-video-label">ویدئوی خبر</span><video controls playsinline preload="metadata"${hasPhoto ? ` poster="${esc(mediaUrl(article.hero_image))}"` : ''}><source src="${esc(videoUrl)}" type="${article.video_type==='video/webm'?'video/webm':'video/mp4'}">مرورگر شما امکان پخش این ویدئو را ندارد.</video>${article.video_caption ? `<figcaption>${esc(article.video_caption)}</figcaption>` : ''}<a class="text-link" href="${esc(videoUrl)}" download>دریافت ویدئو ${icon('arrow')}</a></figure>` : '';
   const author = article.author_name ? `<div class="reader-author"><span class="author-initial" aria-hidden="true">${esc(article.author_name.slice(0,1))}</span><span><small>نویسنده</small><b>${esc(article.author_name)}</b></span></div>` : '<div class="reader-publisher">روایت نگاه جوان</div>';
   const tools = `<div class="article-tools"><div class="reader-font-controls" role="group" aria-label="اندازه متن خبر"><button type="button" data-reader-size="smaller" aria-label="کوچک‌تر کردن متن">A−</button><output data-reader-size-label aria-live="polite">۱۰۰٪</output><button type="button" data-reader-size="larger" aria-label="بزرگ‌تر کردن متن">A+</button></div><button class="icon-button" type="button" aria-label="ذخیره خبر در این مرورگر" aria-pressed="false" data-save-article>${icon('bookmark')}</button><button class="icon-button" type="button" aria-label="اشتراک‌گذاری یا کپی لینک خبر" data-share-article>${icon('share')}</button></div>`;
   const toc = headings.length > 1 ? `<nav class="reader-toc" aria-label="در این روایت"><h2>در این روایت</h2>${headings.map(heading => `<a href="#${heading.id}">${esc(heading.title)}</a>`).join('')}</nav>` : '';
-  return shell(article.title, `${header(key)}<div class="reading-progress" role="progressbar" aria-label="پیشرفت مطالعه خبر" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" data-reading-progress><span></span></div><main id="content" class="wrap reader-page"><header class="article-heading"><nav class="breadcrumbs" aria-label="مسیر صفحه"><a href="/">نگاه جوان</a><span>/</span><a href="${categoryUrl(key)}">${esc(CATEGORY_LABELS[key])}</a><span>/</span><span>روایت خبر</span></nav><a class="article-category" href="${categoryUrl(key)}">${icon(key)}${esc(CATEGORY_LABELS[key])}</a>${formatBadge(article)}<h1>${esc(article.title)}</h1>${summary ? `<div class="reader-deck"><span class="reader-deck-label">در یک نگاه</span><p class="article-excerpt">${esc(summary)}</p></div>` : ''}<div class="reader-byline">${author}<div class="article-meta">${article.published_at ? `<time datetime="${esc(article.published_at)}">${dateFa(article.published_at,true)}</time>` : ''}<span>${icon('time')}${number(readingMinutes(article.body || ''))} دقیقه مطالعه</span>${updated}</div></div><div class="article-bar"><span class="reader-tools-label">برای مطالعه بهتر</span>${tools}</div><div class="action-notice" role="status" aria-live="polite" data-action-notice></div></header><figure class="article-cover ${hasPhoto ? '' : 'article-cover-graphic'}">${media(article,{className:'article-photo',eager:true})}${hasPhoto ? '' : '<figcaption>تصویر گرافیکی تحریریه نگاه جوان</figcaption>'}</figure><div class="article-content"><article class="article-body reader-prose" data-reader-body>${paragraphs}${source}<div class="article-end"><a class="text-link" href="${categoryUrl(key)}">روایت‌های بیشتر در ${esc(CATEGORY_LABELS[key])} ${icon('arrow')}</a><a class="text-link" href="/">بازگشت به نگاه جوان ${icon('northeast')}</a></div></article><aside class="article-aside">${toc}<div class="reader-context">${icon('newspaper')}<h2>از این زاویه بخوان</h2><p>${esc(CATEGORY_LABELS[key])} در نگاه جوان؛ خبرها و روایت‌های مرتبط را دنبال کن.</p><a class="text-link" href="${categoryUrl(key)}">خبرهای ${esc(CATEGORY_LABELS[key])} ${icon('arrow')}</a></div></aside></div></main>${footer()}`,{description:summary});
+  return shell(article.title, `${header(key)}<div class="reading-progress" role="progressbar" aria-label="پیشرفت مطالعه خبر" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" data-reading-progress><span></span></div><main id="content" class="wrap reader-page"><header class="article-heading"><nav class="breadcrumbs" aria-label="مسیر صفحه"><a href="/">نگاه جوان</a><span>/</span><a href="${categoryUrl(key)}">${esc(CATEGORY_LABELS[key])}</a><span>/</span><span>روایت خبر</span></nav><a class="article-category" href="${categoryUrl(key)}">${icon(key)}${esc(CATEGORY_LABELS[key])}</a>${formatBadge(article)}<h1>${esc(article.title)}</h1>${showSummary ? `<div class="reader-deck"><span class="reader-deck-label">در یک نگاه</span><p class="article-excerpt">${esc(summary)}</p></div>` : ''}<div class="reader-byline">${author}<div class="article-meta">${article.published_at ? `<time datetime="${esc(article.published_at)}">${dateFa(article.published_at,true)}</time>` : ''}<span>${icon('time')}${number(readingMinutes(article.body || ''))} دقیقه مطالعه</span>${updated}</div></div><div class="article-bar"><span class="reader-tools-label">برای مطالعه بهتر</span>${tools}</div><div class="action-notice" role="status" aria-live="polite" data-action-notice></div></header><figure class="article-cover ${hasPhoto ? '' : 'article-cover-graphic'}">${media(article,{className:'article-photo',eager:true})}${hasPhoto ? '' : '<figcaption>تصویر گرافیکی تحریریه نگاه جوان</figcaption>'}</figure><div class="article-content"><article class="article-body reader-prose" data-reader-body>${video}${paragraphs}${source}<div class="article-end"><a class="text-link" href="${categoryUrl(key)}">روایت‌های بیشتر در ${esc(CATEGORY_LABELS[key])} ${icon('arrow')}</a><a class="text-link" href="/">بازگشت به نگاه جوان ${icon('northeast')}</a></div></article><aside class="article-aside">${toc}<div class="reader-context">${icon('newspaper')}<h2>از این زاویه بخوان</h2><p>${esc(CATEGORY_LABELS[key])} در نگاه جوان؛ خبرها و روایت‌های مرتبط را دنبال کن.</p><a class="text-link" href="${categoryUrl(key)}">خبرهای ${esc(CATEGORY_LABELS[key])} ${icon('arrow')}</a></div></aside></div></main>${footer()}`,{description:summary});
 }
 
 export function notFoundPage() {

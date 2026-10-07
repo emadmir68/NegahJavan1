@@ -47,10 +47,117 @@ body:before{content:'';position:fixed;inset:0;pointer-events:none;background-ima
 .editor-shell{max-width:1360px}.dash-top{padding:20px 22px;border-radius:24px;margin-bottom:14px}.dash-top-row{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap}.dash-note{font-size:13px;color:var(--muted);line-height:1.8}.stats{grid-template-columns:repeat(5,minmax(0,1fr))}.stat{position:relative;overflow:hidden}.stat:after{content:'';position:absolute;width:70px;height:70px;border-radius:50%;left:-22px;top:-24px;background:rgba(125,211,252,.07)}.stat b{font-family:Arial,Tahoma,sans-serif;font-variant-numeric:tabular-nums}.dash-grid{grid-template-columns:minmax(390px,.72fr) minmax(0,1.28fr)}.composer{position:sticky;top:18px;align-self:start}.field input,.field textarea,.field select{unicode-bidi:plaintext;text-align:right}.field textarea{line-height:1.9}.smartbar{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:12px 0}.smart-action{padding:10px;border-radius:11px;border:1px solid rgba(125,211,252,.18);background:rgba(125,211,252,.07);color:#dff7ff;cursor:pointer;font-size:12px}.smart-action:hover{background:rgba(125,211,252,.12)}.insights{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:10px 0 16px}.insight{padding:10px;border-radius:12px;background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.07);text-align:center}.insight b{display:block;font-family:Arial,Tahoma,sans-serif;font-size:16px}.insight span{font-size:10px;color:var(--muted)}.preview-card{border-radius:18px;overflow:hidden;margin:12px 0;border:1px solid var(--line)}.preview-media{height:145px}.preview-copy{padding:13px}.preview-copy h4{margin:0 0 7px;line-height:1.6}.preview-copy p{margin:0;color:var(--muted);font-size:12px;line-height:1.7}.editor-list-tools{display:flex;gap:8px;margin-bottom:12px}.editor-list-tools input{flex:1;padding:10px 12px;border-radius:11px;border:1px solid var(--line);background:rgba(255,255,255,.05);color:#fff}.article-row{align-items:center}.article-row-title{font-weight:850;line-height:1.65}.article-row .meta{margin-top:6px}.auto-badge{display:inline-flex;align-items:center;gap:5px;font-size:10px;color:#c6fff8;padding:5px 8px;border-radius:999px;background:rgba(79,209,197,.08);border:1px solid rgba(79,209,197,.14)}.helper{font-size:11px;color:var(--muted);line-height:1.7}.form-divider{height:1px;background:rgba(255,255,255,.08);margin:14px 0}
 @media(max-width:1000px){.hero-shell,.article-wrap{grid-template-columns:1fr}.hero-side{grid-template-columns:1fr 1fr}.article-aside{position:static}.news-rail{grid-template-columns:1fr 1fr}.dash-grid{grid-template-columns:1fr}.composer{position:static}}
 @media(max-width:700px){.hero-side{grid-template-columns:1fr}.news-rail{grid-template-columns:1fr 1fr}.stats{grid-template-columns:1fr 1fr}.smartbar{grid-template-columns:1fr 1fr}.insights{grid-template-columns:1fr 1fr}.section-grid{grid-template-columns:1fr}.mast{display:none}}
+
+/* luminous glass / typography v3 */
+:root{
+  --bg:#edf5f7;--bg2:#e4eef2;--card:rgba(255,255,255,.58);--card2:rgba(255,255,255,.76);
+  --line:rgba(255,255,255,.86);--text:#0b1724;--muted:#526473;--accent:#0bb8c4;--accent2:#55c9f0;
+  --red:#ff5264;--amber:#d89c25;--shadow:0 24px 70px rgba(38,67,82,.13)
+}
+body{
+  background:
+    radial-gradient(circle at 85% 0%,rgba(111,221,229,.38),transparent 28%),
+    radial-gradient(circle at 8% 18%,rgba(125,211,252,.34),transparent 27%),
+    radial-gradient(circle at 50% 100%,rgba(206,226,237,.8),transparent 36%),
+    linear-gradient(145deg,#f7fbfc 0%,#edf5f7 48%,#e5eff3 100%);
+  color:var(--text)
+}
+body:before{
+  background-image:linear-gradient(rgba(36,73,92,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(36,73,92,.035) 1px,transparent 1px);
+  opacity:.6
+}
+.glass{
+  background:linear-gradient(145deg,rgba(255,255,255,.76),rgba(255,255,255,.42));
+  border:1px solid rgba(255,255,255,.92);
+  box-shadow:0 24px 70px rgba(41,71,87,.13),inset 0 1px 0 rgba(255,255,255,.94);
+  backdrop-filter:blur(26px) saturate(135%);-webkit-backdrop-filter:blur(26px) saturate(135%)
+}
+.top{
+  background:rgba(247,252,253,.72);border-bottom:1px solid rgba(255,255,255,.86);
+  box-shadow:0 12px 34px rgba(48,82,98,.08)
+}
+.brand{color:#0b1724;letter-spacing:-.7px}.mark{background:linear-gradient(135deg,#70e1df,#78c9f7);color:#08131d;box-shadow:0 12px 28px rgba(19,169,183,.22)}
+.nav{color:#3f5667;font-weight:700}.nav a:hover{color:#071522}
+.editor-link,.btn-soft{background:rgba(255,255,255,.56);color:#172b39;border:1px solid rgba(255,255,255,.94);box-shadow:0 8px 24px rgba(53,81,95,.08)}
+.mast{border-bottom-color:rgba(39,74,91,.08);color:#5c6f7d}.kicker{color:#008c9a}
+.ticker{background:rgba(255,255,255,.66);border:1px solid rgba(255,255,255,.92);box-shadow:0 18px 46px rgba(52,79,94,.09)}
+.ticker-track{color:#213746}.ticker-label{box-shadow:0 8px 20px rgba(255,82,100,.23)}
+.hero-shell{grid-template-columns:minmax(0,1.55fr) minmax(280px,.45fr);gap:20px;margin-top:24px}
+.hero{
+  min-height:620px;border-radius:38px;border:1px solid rgba(255,255,255,.95);
+  box-shadow:0 36px 90px rgba(34,63,78,.18),inset 0 1px 0 rgba(255,255,255,.9);
+  background-color:#dbe8ed;background-size:cover;background-position:center;isolation:isolate
+}
+.hero:after{
+  z-index:0;background:linear-gradient(90deg,rgba(238,247,249,.08) 0%,rgba(243,249,250,.48) 34%,rgba(247,251,252,.90) 66%,rgba(249,252,253,.985) 100%)
+}
+.hero-type{
+  position:absolute;left:clamp(20px,4vw,58px);top:50%;transform:translateY(-52%);z-index:1;
+  font-size:clamp(78px,11vw,170px);line-height:.72;font-weight:1000;letter-spacing:-8px;text-align:left;
+  color:rgba(255,255,255,.22);-webkit-text-stroke:1.5px rgba(11,23,36,.20);
+  text-shadow:0 18px 44px rgba(22,48,62,.12);user-select:none;pointer-events:none
+}
+.hero-number{
+  position:absolute;left:clamp(22px,4vw,60px);bottom:34px;z-index:2;font:800 11px/1 Arial,sans-serif;
+  letter-spacing:.18em;color:rgba(16,48,65,.62);background:rgba(255,255,255,.58);border:1px solid rgba(255,255,255,.84);
+  padding:10px 13px;border-radius:999px;backdrop-filter:blur(12px)
+}
+.hero-content{
+  min-height:620px;max-width:720px;margin-right:0;margin-left:auto;padding:clamp(34px,5vw,72px);
+  justify-content:center;text-align:right
+}
+.hero h1{
+  color:#071522;font-size:clamp(48px,6.7vw,92px);line-height:.94;letter-spacing:-3.6px;font-weight:1000;
+  margin:20px 0 18px;max-width:690px;text-wrap:balance
+}
+.hero h1 strong{color:#009eaa;font-weight:1000}
+.hero p{color:#405564;font-size:clamp(16px,1.75vw,20px);line-height:2;max-width:620px;font-weight:540}
+.eyebrow{background:rgba(255,255,255,.66);border:1px solid rgba(255,255,255,.9);color:#243b4a;box-shadow:0 8px 26px rgba(44,75,91,.08)}
+.btn-primary{background:linear-gradient(135deg,#0bbbc5,#63cdf1);color:#06131b;box-shadow:0 14px 30px rgba(10,173,187,.22);font-weight:950}
+.hero-side{gap:14px}.hero-side-title{color:#526473;font-weight:850}
+.hero-side .mini{background:linear-gradient(145deg,rgba(255,255,255,.82),rgba(255,255,255,.52));border:1px solid rgba(255,255,255,.96);box-shadow:0 18px 44px rgba(42,71,85,.10)}
+.mini h4,.card h3,.section-title,.article-row-title{color:#102332}
+.meta,.section-sub,.excerpt,.helper,.dash-note{color:#5c6d79}
+.tag{color:#007d87;background:rgba(13,184,196,.10);border-color:rgba(13,184,196,.20);font-weight:850}
+.card,.rail-item,.panel,.dash-top,.stat,.article,.article-aside,.login{background:linear-gradient(145deg,rgba(255,255,255,.76),rgba(255,255,255,.45))}
+.card-body{background:linear-gradient(180deg,rgba(255,255,255,.12),rgba(255,255,255,.36))}
+.section-head:after{background:linear-gradient(90deg,transparent,rgba(43,74,90,.12))}
+.thumb:after{background:linear-gradient(180deg,transparent 55%,rgba(13,32,43,.46))}
+.news-rail .rail-item{border:1px solid rgba(255,255,255,.94)}
+.rail-number{color:#008a96}
+.footer{border-top-color:rgba(40,73,89,.10);color:#5a6c79}.footer b{color:#0b1724!important}
+.article h1{color:#0a1825}.article-body{color:#243b49}.article-aside{color:#1a2f3d}.source{background:rgba(255,255,255,.52)}
+.field label{color:#506371;font-weight:760}
+.field input,.field textarea,.field select,.editor-list-tools input,.searchbar input{
+  background:rgba(255,255,255,.62);color:#102332;border:1px solid rgba(255,255,255,.96);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.95),0 8px 20px rgba(42,71,85,.06)
+}
+.field input:focus,.field textarea:focus,.field select:focus,.editor-list-tools input:focus,.searchbar input:focus{border-color:rgba(0,167,181,.36);outline:2px solid rgba(0,167,181,.09)}
+.field select option{background:#f7fbfc;color:#102332}
+.tiny,.smart-action{background:rgba(255,255,255,.62);color:#1a3444;border-color:rgba(255,255,255,.94)}
+.insight,.q{background:rgba(255,255,255,.52);border-color:rgba(255,255,255,.88);color:#46606f}
+.status{background:rgba(53,84,101,.08);color:#48606f}.status.published{background:rgba(13,184,196,.11);color:#04747c}.status.breaking{background:rgba(255,82,100,.10);color:#bd3042}
+.auto-badge{color:#047a83;background:rgba(13,184,196,.08);border-color:rgba(13,184,196,.16)}
+.preview-card{background:rgba(255,255,255,.58);border-color:rgba(255,255,255,.96)}
+.error{color:#c33345}
+@media(max-width:1000px){
+  .hero{min-height:560px}.hero-content{min-height:560px;max-width:760px}.hero-type{opacity:.56}
+}
+@media(max-width:700px){
+  .hero{min-height:570px;border-radius:28px;background-position:42% center}
+  .hero:after{background:linear-gradient(180deg,rgba(247,251,252,.38) 0%,rgba(247,251,252,.83) 47%,rgba(249,252,253,.99) 100%)}
+  .hero-content{min-height:570px;padding:28px 24px;justify-content:flex-end}
+  .hero h1{font-size:clamp(42px,13vw,62px);letter-spacing:-2.4px;line-height:.98}
+  .hero-type{left:18px;top:112px;transform:none;font-size:74px;line-height:.74;letter-spacing:-5px;opacity:.52}
+  .hero-number{left:20px;bottom:auto;top:22px}
+  .hero-shell{gap:14px}.hero-side{grid-template-columns:1fr}
+  .glass{backdrop-filter:blur(20px) saturate(125%);-webkit-backdrop-filter:blur(20px) saturate(125%)}
+}
+
 `;
 
 function shell(title, body, extraHead='') {
-  return `<!doctype html><html lang="fa" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#07101a"><title>${esc(title)} | نگاه جوان</title><meta name="description" content="نگاه جوان؛ رسانه خبری برای روایت روشن و دقیق تحولات ایران و جهان"><style>${css}</style>${extraHead}</head><body>${body}</body></html>`;
+  return `<!doctype html><html lang="fa" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#edf5f7"><title>${esc(title)} | نگاه جوان</title><meta name="description" content="نگاه جوان؛ رسانه خبری برای روایت روشن و دقیق تحولات ایران و جهان"><style>${css}</style>${extraHead}</head><body>${body}</body></html>`;
 }
 
 function header() {
@@ -92,7 +199,7 @@ export function homePage(data) {
   const heroMediaClass = hero?.hero_image ? '' : ` smart-cover cover-${esc(hero?.category || 'general')}`;
   const heroBg = hero?.hero_image ? imgStyle(hero.hero_image) : (hero ? `style="background-image:url('/cover/${encodeURIComponent(hero.slug)}.svg');background-size:cover;background-position:center"` : '');
   const heroVisual = !hero?.hero_image && hero ? `<span class="cover-category">${esc(CATEGORY_LABELS[hero.category] || 'خبر')}</span><span class="cover-mark"><span class="cover-symbol">ن</span><span>انتخاب هوشمند تحریریه</span></span>` : '';
-  const heroBlock = hero ? `<section class="hero${heroMediaClass} glass" ${heroBg}>${heroVisual}<div class="hero-content"><span class="eyebrow"><span class="dot"></span>${hero.status==='breaking'?'خبر فوری':'تیتر اول نگاه جوان'}</span><h1>${esc(hero.title)}</h1><p>${esc(hero.excerpt || 'جزئیات کامل این خبر را در صفحه خبر بخوانید.')}</p><div class="actions"><a class="btn btn-primary" href="/news/${encodeURIComponent(hero.slug)}">مطالعه خبر</a><a class="btn btn-soft" href="#latest">آخرین خبرها</a></div></div></section>` : `<section class="hero smart-cover cover-general glass"><span class="cover-category">نگاه جوان</span><span class="cover-mark"><span class="cover-symbol">ن</span><span>نسخه حرفه‌ای خبر</span></span><div class="hero-content"><span class="eyebrow"><span class="dot"></span>رسانه خبری نسل امروز</span><h1>خبر را سریع‌تر نبین؛ روشن‌تر ببین.</h1><p>سیاست، حوادث، اقتصاد، جامعه، فناوری، فرهنگ، ورزش و جهان؛ با ساختار حرفه‌ای و تحریریه هوشمند.</p><div class="actions"><a class="btn btn-primary" href="/editorial">ورود به تحریریه</a></div></div></section>`;
+  const heroBlock = hero ? `<section class="hero${heroMediaClass} glass" ${heroBg}><div class="hero-type" aria-hidden="true">نگاه<br>جوان</div><div class="hero-number" aria-hidden="true">01 / TOP STORY</div>${heroVisual}<div class="hero-content"><span class="eyebrow"><span class="dot"></span>${hero.status==='breaking'?'خبر فوری':'تیتر اول نگاه جوان'}</span><h1>${esc(hero.title)}</h1><p>${esc(hero.excerpt || 'جزئیات کامل این خبر را در صفحه خبر بخوانید.')}</p><div class="actions"><a class="btn btn-primary" href="/news/${encodeURIComponent(hero.slug)}">مطالعه خبر</a><a class="btn btn-soft" href="#latest">آخرین خبرها</a></div></div></section>` : `<section class="hero smart-cover cover-general glass"><div class="hero-type" aria-hidden="true">نگاه<br>جوان</div><div class="hero-number" aria-hidden="true">01 / FRONT PAGE</div><div class="hero-content"><span class="eyebrow"><span class="dot"></span>رسانه خبری نسل امروز</span><h1>خبر را سریع‌تر نبین؛<br><strong>روشن‌تر ببین.</strong></h1><p>سیاست، حوادث، اقتصاد، جامعه، فناوری، فرهنگ، ورزش و جهان؛ با روایت دقیق، طراحی روشن و تحریریه هوشمند.</p><div class="actions"><a class="btn btn-primary" href="/editorial">ورود به تحریریه</a><a class="btn btn-soft" href="#latest">مشاهده خبرها</a></div></div></section>`;
   const tickerItems = data.breaking.length ? data.breaking.map(a=>`<a href="/news/${encodeURIComponent(a.slug)}">${esc(a.title)}</a>`).join('') : `<span>نوار خبر فوری آماده است؛ یک خبر را با وضعیت «فوری» منتشر کنید.</span>`;
   const latest = data.latest || [];
   const side = latest.filter(a=>!hero || a.id!==hero.id).slice(0,4);

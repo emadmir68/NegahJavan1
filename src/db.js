@@ -97,31 +97,108 @@ function publishedWhere() {
   return `(status = 'published' OR status = 'breaking') AND published_at IS NOT NULL`;
 }
 
+const emptyEdition = () => ({ main_slug: '', editor_picks: [], dossier_title: '', dossier_description: '', dossier_slugs: [] });
+class EditionInputError extends Error { status = 400; }
+
+function articleMetadata(value = '{}') {
+  try {
+    const data = JSON.parse(value);
+    return { author_name:typeof data.author_name === 'string' ? data.author_name.slice(0,120) : '', format:['analysis','report'].includes(data.format) ? data.format : 'news' };
+  } catch { return {author_name:'',format:'news'}; }
+}
+
+async function metadataMap(env) {
+  const rows = await env.DB.prepare("SELECT key,value FROM site_settings WHERE key LIKE 'article_meta:%'").all();
+  return new Map((rows.results || []).map(row => [row.key,articleMetadata(row.value)]));
+}
+
+export function normalizeHomeEdition(input = {}) {
+  if (!input || typeof input !== 'object' || Array.isArray(input)) throw new EditionInputError('ساختار تنظیمات صفحه اول نامعتبر است');
+  const slugs = (value, limit) => Array.isArray(value)
+    ? [...new Set(value.filter(item => typeof item === 'string').map(item => item.trim().slice(0, 160)).filter(Boolean))].slice(0, limit)
+    : [];
+  return {
+    main_slug: typeof input.main_slug === 'string' ? input.main_slug.trim().slice(0, 160) : '',
+    editor_picks: slugs(input.editor_picks, 3),
+    dossier_title: normalizePersianText(input.dossier_title || '').slice(0, 140),
+    dossier_description: normalizePersianText(input.dossier_description || '').slice(0, 300),
+    dossier_slugs: slugs(input.dossier_slugs, 4),
+  };
+}
+
+export async function getHomeEdition(env) {
+  if (!(await ensureSchema(env))) return emptyEdition();
+  const row = await env.DB.prepare('SELECT value FROM site_settings WHERE key=?').bind('homepage_edition').first();
+  try { return normalizeHomeEdition(JSON.parse(row?.value || '{}')); } catch { return emptyEdition(); }
+}
+
+export async function saveHomeEdition(env, input) {
+  await ensureSchema(env);
+  const edition = normalizeHomeEdition(input);
+  const selected = [...new Set([edition.main_slug, ...edition.editor_picks, ...edition.dossier_slugs].filter(Boolean))];
+  if (selected.length) {
+    const found = await env.DB.prepare(`SELECT slug FROM articles WHERE ${publishedWhere()} AND slug IN (${selected.map(() => '?').join(',')})`).bind(...selected).all();
+    const published = new Set((found.results || []).map(article => article.slug));
+    if (selected.some(slug => !published.has(slug))) throw new EditionInputError('برای صفحه اول فقط خبرهای منتشرشده را انتخاب کنید');
+  }
+  if (edition.dossier_slugs.length && !edition.dossier_title) throw new EditionInputError('عنوان پرونده ویژه را وارد کنید');
+  await env.DB.prepare('INSERT INTO site_settings (key,value,updated_at) VALUES (?,?,CURRENT_TIMESTAMP) ON CONFLICT(key) DO UPDATE SET value=excluded.value,updated_at=CURRENT_TIMESTAMP').bind('homepage_edition', JSON.stringify(edition)).run();
+  return edition;
+}
+
+async function editionArticles(env, slugs) {
+  if (!slugs.length) return [];
+  const result = await env.DB.prepare(`SELECT * FROM articles WHERE ${publishedWhere()} AND slug IN (${slugs.map(() => '?').join(',')})`).bind(...slugs).all();
+  const bySlug = new Map((result.results || []).map(article => [article.slug, article]));
+  return slugs.map(slug => bySlug.get(slug)).filter(Boolean);
+}
+
+async function saveArticleMetadata(env, id, input) {
+  if (!Object.hasOwn(input, 'author_name') && !Object.hasOwn(input,'format')) return;
+  const row = await env.DB.prepare('SELECT value FROM site_settings WHERE key=?').bind('article_meta:' + id).first();
+  const previous = articleMetadata(row?.value);
+  const data = {
+    author_name:Object.hasOwn(input,'author_name') ? normalizePersianText(input.author_name || '').slice(0,120) : previous.author_name,
+    format:Object.hasOwn(input,'format') ? (['analysis','report'].includes(input.format) ? input.format : 'news') : previous.format,
+  };
+  await env.DB.prepare('INSERT INTO site_settings (key,value,updated_at) VALUES (?,?,CURRENT_TIMESTAMP) ON CONFLICT(key) DO UPDATE SET value=excluded.value,updated_at=CURRENT_TIMESTAMP').bind('article_meta:' + id, JSON.stringify(data)).run();
+}
+
 export async function getHomeData(env) {
   if (!(await ensureSchema(env))) return { configured: false, breaking: [], hero: null, latest: [], sections: {} };
+  const [edition, metadata] = await Promise.all([getHomeEdition(env),metadataMap(env)]);
+  const decorate = article => article ? {...article,...(metadata.get('article_meta:' + article.id) || {author_name:'',format:'news'})} : null;
   const sectionQueries = Object.keys(CATEGORY_LABELS)
     .filter(k => k !== 'general')
     .map(k => env.DB.prepare(`SELECT * FROM articles WHERE ${publishedWhere()} AND category=? ORDER BY published_at DESC LIMIT 6`).bind(k).all());
-  const [breaking, hero, latest, ...sectionsRaw] = await Promise.all([
+  const [breaking, automaticHero, latest, ...sectionsRaw] = await Promise.all([
     env.DB.prepare(`SELECT * FROM articles WHERE status='breaking' AND published_at IS NOT NULL ORDER BY published_at DESC LIMIT 10`).all(),
     env.DB.prepare(`SELECT * FROM articles WHERE ${publishedWhere()} ORDER BY CASE WHEN status='breaking' THEN 0 ELSE 1 END, published_at DESC LIMIT 1`).first(),
     env.DB.prepare(`SELECT * FROM articles WHERE ${publishedWhere()} ORDER BY published_at DESC LIMIT 16`).all(),
     ...sectionQueries
   ]);
   const keys = Object.keys(CATEGORY_LABELS).filter(k => k !== 'general');
-  const sections = Object.fromEntries(keys.map((k,i)=>[k, sectionsRaw[i]?.results || []]));
+  const sections = Object.fromEntries(keys.map((k,i)=>[k, (sectionsRaw[i]?.results || []).map(decorate)]));
+  const selected = await editionArticles(env, [...new Set([edition.main_slug, ...edition.editor_picks, ...edition.dossier_slugs].filter(Boolean))]);
+  const selectedBySlug = new Map(selected.map(article => [article.slug, article]));
   return {
     configured: true,
     breaking: breaking.results || [],
-    hero,
-    latest: latest.results || [],
-    sections
+    hero: decorate(selectedBySlug.get(edition.main_slug) || automaticHero),
+    latest: (latest.results || []).map(decorate),
+    sections,
+    editorPicks: edition.editor_picks.map(slug => decorate(selectedBySlug.get(slug))).filter(Boolean),
+    dossier: { title: edition.dossier_title, description: edition.dossier_description, articles: edition.dossier_slugs.map(slug => decorate(selectedBySlug.get(slug))).filter(Boolean) },
   };
 }
 
 export async function getArticle(env, slug, increment = true) {
   if (!(await ensureSchema(env))) return null;
   const article = await env.DB.prepare(`SELECT * FROM articles WHERE slug=? AND ${publishedWhere()} LIMIT 1`).bind(slug).first();
+  if (article) {
+    const metadata = await env.DB.prepare('SELECT value FROM site_settings WHERE key=?').bind('article_meta:' + article.id).first();
+    Object.assign(article,articleMetadata(metadata?.value));
+  }
   if (article && increment) env.DB.prepare(`UPDATE articles SET views=views+1 WHERE id=?`).bind(article.id).run().catch(() => {});
   return article;
 }
@@ -129,14 +206,16 @@ export async function getArticle(env, slug, increment = true) {
 export async function listByCategory(env, category, limit = 30) {
   if (!(await ensureSchema(env))) return [];
   const r = await env.DB.prepare(`SELECT * FROM articles WHERE ${publishedWhere()} AND category=? ORDER BY published_at DESC LIMIT ?`).bind(category, limit).all();
-  return r.results || [];
+  const metadata = await metadataMap(env);
+  return (r.results || []).map(article => ({...article,...(metadata.get('article_meta:' + article.id) || {author_name:'',format:'news'})}));
 }
 
 export async function searchArticles(env, q, limit = 30) {
   if (!(await ensureSchema(env))) return [];
   const term = `%${normalizePersianText(String(q || "").trim())}%`;
   const r = await env.DB.prepare(`SELECT * FROM articles WHERE ${publishedWhere()} AND (title LIKE ? OR excerpt LIKE ? OR body LIKE ?) ORDER BY published_at DESC LIMIT ?`).bind(term, term, term, limit).all();
-  return r.results || [];
+  const metadata = await metadataMap(env);
+  return (r.results || []).map(article => ({...article,...(metadata.get('article_meta:' + article.id) || {author_name:'',format:'news'})}));
 }
 
 export async function adminStats(env) {
@@ -154,7 +233,12 @@ export async function adminStats(env) {
 export async function adminArticles(env, limit = 120) {
   if (!(await ensureSchema(env))) return [];
   const r = await env.DB.prepare(`SELECT * FROM articles ORDER BY created_at DESC LIMIT ?`).bind(limit).all();
-  return r.results || [];
+  const [metadata, edition] = await Promise.all([metadataMap(env),getHomeEdition(env)]);
+  const recent = r.results || [];
+  const available = new Set(recent.map(article => article.slug));
+  const missing = [...new Set([edition.main_slug,...edition.editor_picks,...edition.dossier_slugs].filter(slug => slug && !available.has(slug)))];
+  const selected = await editionArticles(env,missing);
+  return [...recent,...selected].map(article => ({ ...article, ...(metadata.get('article_meta:' + article.id) || {author_name:'',format:'news'}) }));
 }
 
 function cleanArticleInput(input, current = null) {
@@ -199,6 +283,7 @@ export async function createArticle(env, input) {
       clean.source_url,
       publishedAt
     ).run();
+  await saveArticleMetadata(env, result.meta.last_row_id, input);
   return { id: result.meta.last_row_id, slug, category: clean.category, excerpt: clean.excerpt };
 }
 
@@ -227,11 +312,13 @@ export async function updateArticle(env, id, input) {
       publishedAt,
       id
     ).run();
+  await saveArticleMetadata(env, id, input);
   return { id, slug, category: clean.category, excerpt: clean.excerpt };
 }
 
 export async function deleteArticle(env, id) {
   await ensureSchema(env);
   await env.DB.prepare(`DELETE FROM articles WHERE id=?`).bind(id).run();
+  await env.DB.prepare('DELETE FROM site_settings WHERE key=?').bind('article_meta:' + id).run();
   return { id };
 }

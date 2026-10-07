@@ -1,5 +1,5 @@
 import { authConfigured, passwordMatches, createSession, verifySession, sessionCookie, clearSessionCookie, sameOrigin } from './auth.js';
-import { CATEGORY_LABELS, getHomeData, getArticle, listByCategory, searchArticles, adminStats, adminArticles, createArticle, updateArticle, deleteArticle, hasDatabase } from './db.js';
+import { CATEGORY_LABELS, getHomeData, getHomeEdition, saveHomeEdition, getArticle, listByCategory, searchArticles, adminStats, adminArticles, createArticle, updateArticle, deleteArticle, hasDatabase } from './db.js';
 import { editorialPage } from './ui.js';
 import { homePage, articlePage, listingPage, notFoundPage } from './ui-public.js';
 import { vazirmatnBase64 } from './font.js';
@@ -128,8 +128,17 @@ export default {
       if (path === '/api/admin/bootstrap' && request.method === 'GET') {
         const authenticated = await requireEditor(request, env);
         if (!authenticated) return json({ authenticated:false, authConfigured:authConfigured(env), databaseConfigured:hasDatabase(env) });
-        const [stats, articles] = await Promise.all([adminStats(env), adminArticles(env)]);
-        return json({ authenticated:true, authConfigured:true, databaseConfigured:hasDatabase(env), stats, articles });
+        const [stats, articles, edition] = await Promise.all([adminStats(env), adminArticles(env), getHomeEdition(env)]);
+        return json({ authenticated:true, authConfigured:true, databaseConfigured:hasDatabase(env), stats, articles, edition });
+      }
+
+      if (path === '/api/admin/homepage' && request.method === 'PUT') {
+        if (!secureWriteRequest(request)) return json({ error:'Origin نامعتبر است' }, 403);
+        if (!(await requireEditor(request, env))) return json({ error:'نیاز به ورود دارید' }, 401);
+        if (!hasDatabase(env)) return json({ error:'دیتابیس در دسترس نیست' }, 503);
+        const data = await bodyJson(request);
+        try { return json({ ok:true, edition:await saveHomeEdition(env, data) }); }
+        catch (error) { if (error.status === 400) return json({ error:error.message }, 400); throw error; }
       }
 
       if (path === '/api/admin/smart-preview' && request.method === 'POST') {

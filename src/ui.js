@@ -154,6 +154,85 @@ body:before{
   .glass{backdrop-filter:blur(20px) saturate(125%);-webkit-backdrop-filter:blur(20px) saturate(125%)}
 }
 
+
+/* editorial glass v4 — high-end desktop + mobile-first */
+:root{
+  --ink:#08131d;--ink2:#16303e;--paper:#f6fbfc;--ice:#e8f3f6;--cyan:#0aa9b6;--cyan2:#65d8e0;
+  --blue:#55b8e9;--rose:#ff5f73;--hair:rgba(20,49,64,.10);--glass-hi:rgba(255,255,255,.86);
+}
+html{background:#edf5f7}
+body{font-family:"Segoe UI",Tahoma,"Noto Sans Arabic",Arial,sans-serif;letter-spacing:-.01em}
+.wrap{width:min(1280px,calc(100% - 40px))}
+.top{position:sticky;top:0;z-index:70;background:rgba(246,251,252,.76);backdrop-filter:blur(28px) saturate(145%);-webkit-backdrop-filter:blur(28px) saturate(145%)}
+.top-inner{height:auto;display:block;padding:12px 0 9px}
+.top-main{display:flex;align-items:center;gap:16px;min-height:54px}
+.brand{gap:12px;min-width:max-content}.brand-copy{display:grid;line-height:1}.brand-copy b{font-size:21px;font-weight:1000;letter-spacing:-1px}.brand-copy small{font:800 8px/1.3 Arial,sans-serif;letter-spacing:.13em;color:#6d7f8a;margin-top:5px}
+.mark{width:44px;height:44px;border-radius:15px;font-size:22px}
+.top-status{display:flex;align-items:center;gap:8px;font-size:11px;color:#617783;font-weight:750}
+.nav{display:flex!important;align-items:center;gap:7px;overflow-x:auto;scrollbar-width:none;padding:9px 0 1px;border-top:1px solid rgba(20,49,64,.055)}
+.nav::-webkit-scrollbar{display:none}.nav a{flex:0 0 auto;padding:8px 12px;border-radius:999px;font-size:12px;font-weight:850;background:rgba(255,255,255,.40);border:1px solid rgba(255,255,255,.76);transition:.18s}.nav a:hover{background:#fff;transform:translateY(-1px);box-shadow:0 10px 24px rgba(35,64,79,.09)}
+.editor-link{font-size:12px;font-weight:900;padding:10px 15px}
+.mast{padding:8px 0}.mast .wrap{font-size:11px}
+.ticker{margin-top:20px;min-height:52px;border-radius:18px;box-shadow:0 16px 42px rgba(36,66,81,.08)}.ticker-label{align-self:stretch;display:flex;align-items:center;padding:0 20px}.ticker-track{gap:42px;font-size:13px;font-weight:700;scrollbar-width:none}
+.hero-shell{grid-template-columns:minmax(0,1.7fr) minmax(280px,.46fr);gap:22px;margin-top:22px;align-items:stretch}
+.hero{min-height:680px;border-radius:44px;overflow:hidden;position:relative}
+.hero:before{content:'';position:absolute;inset:0;z-index:0;background:linear-gradient(135deg,rgba(255,255,255,.16),transparent 42%);pointer-events:none}
+.hero:after{background:linear-gradient(90deg,rgba(235,245,248,.00) 0%,rgba(242,249,250,.34) 27%,rgba(248,252,253,.88) 62%,rgba(250,253,254,.985) 100%)}
+.hero-empty{background:
+  radial-gradient(circle at 18% 24%,rgba(96,216,225,.62),transparent 20%),
+  radial-gradient(circle at 70% 78%,rgba(96,184,232,.25),transparent 27%),
+  linear-gradient(135deg,#e1f1f5 0%,#f9fcfd 48%,#eef7f8 100%)!important}
+.hero-content{min-height:680px;max-width:760px;padding:clamp(46px,5.3vw,78px);justify-content:center;z-index:5}
+.hero-meta-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.hero-category{font-size:11px;font-weight:900;color:#0b7f89;padding:8px 11px;border-radius:999px;background:rgba(255,255,255,.61);border:1px solid rgba(255,255,255,.88)}
+.hero h1{font-size:clamp(58px,6.2vw,96px);line-height:.95;letter-spacing:-5px;font-weight:1000;max-width:760px;margin:22px 0 20px;color:#07131c;text-wrap:balance}
+.hero h1 strong{color:#0099a5}
+.hero p{font-size:clamp(16px,1.6vw,20px);line-height:2.05;max-width:630px;color:#405762;font-weight:560}
+.hero-bottom{display:flex;align-items:end;justify-content:space-between;gap:22px;margin-top:18px}
+.hero-reading{display:grid;justify-items:end;line-height:1}.hero-reading b{font:950 28px/1 Arial,sans-serif;color:#0b7f89}.hero-reading span{font-size:10px;color:#71838d;margin-top:6px}
+.hero-ghost{position:absolute;left:-12px;top:50%;transform:translateY(-53%);z-index:1;font-size:clamp(160px,18vw,285px);font-weight:1000;letter-spacing:-16px;line-height:.78;color:rgba(255,255,255,.13);-webkit-text-stroke:1px rgba(7,32,44,.16);text-shadow:0 28px 70px rgba(19,58,75,.08);user-select:none;pointer-events:none}
+.hero-edition{position:absolute;left:42px;top:34px;z-index:4;font:900 10px/1 Arial,sans-serif;letter-spacing:.18em;color:rgba(17,58,75,.56);padding:10px 13px;border-radius:999px;background:rgba(255,255,255,.50);border:1px solid rgba(255,255,255,.78);backdrop-filter:blur(14px)}
+.hero-corner{position:absolute;left:38px;bottom:38px;z-index:4;display:grid;gap:5px;text-align:left}.hero-corner span{font:800 9px/1 Arial,sans-serif;letter-spacing:.15em;color:rgba(23,56,71,.50)}
+.hero-side{display:grid;grid-template-rows:auto repeat(3,1fr);gap:12px;min-width:0}
+.hero-side-title{display:grid;grid-template-columns:auto 1fr;column-gap:10px;align-items:center;padding:4px 3px 8px;color:#233b49}.hero-side-title span{grid-row:1/3;font:950 28px/1 Arial,sans-serif;color:#0b9aa5}.hero-side-title b{font-size:14px;font-weight:950}.hero-side-title small{font-size:9px;color:#7a8b94;margin-top:3px}
+.hero-side .mini{min-height:0;height:100%;padding:12px;border-radius:22px;grid-template-columns:112px 1fr;box-shadow:0 18px 42px rgba(42,71,85,.08)}
+.hero-side .mini-thumb{height:100%;min-height:92px;border-radius:16px}
+.hero-side .mini h4{font-size:14px;line-height:1.55;margin:8px 0 5px}
+.news-rail{gap:14px;margin-top:18px}.rail-item{min-height:140px;border-radius:22px;padding:18px;transition:.18s}.rail-item:hover{transform:translateY(-3px);box-shadow:0 20px 42px rgba(42,71,85,.11)}
+.section{margin-top:58px}.section-head{margin-bottom:19px;align-items:center}.section-title{font-size:clamp(28px,2.5vw,38px);letter-spacing:-1.6px;font-weight:1000}.section-sub{font-size:12px}
+.grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:20px}
+.card{border-radius:28px;transition:transform .22s ease,box-shadow .22s ease}.card:hover{transform:translateY(-5px);box-shadow:0 28px 62px rgba(42,70,84,.14)}.thumb{height:230px}.card-body{padding:20px 21px 22px}.card h3{font-size:20px;line-height:1.6;letter-spacing:-.65px}
+.article{padding:clamp(28px,5vw,68px);border-radius:34px}.article h1{font-size:clamp(44px,5.4vw,76px);line-height:1.1;letter-spacing:-2.5px}.article-body{font-size:19px;line-height:2.25;max-width:800px}.article-aside{border-radius:26px}
+.editor-shell{width:min(1400px,calc(100% - 34px));margin:22px auto 42px}.dash-top{border-radius:28px;padding:24px 26px}.dash-grid{grid-template-columns:minmax(410px,.70fr) minmax(0,1.30fr);gap:20px}.panel{border-radius:28px;padding:22px}.composer{top:118px}.field input,.field textarea,.field select{border-radius:14px;padding:13px 14px;font-size:14px}.field textarea{min-height:158px}.smart-action{border-radius:13px;font-weight:850}.insight{border-radius:14px;padding:12px}.preview-card{border-radius:22px}
+@media(max-width:1100px){
+  .hero-shell{grid-template-columns:1fr}.hero{min-height:620px}.hero-content{min-height:620px;max-width:780px}
+  .hero-side{grid-template-columns:repeat(3,1fr);grid-template-rows:auto auto}.hero-side-title{grid-column:1/-1}.hero-side .mini{height:150px}
+  .hero-side .mini-thumb{height:100%}.dash-grid{grid-template-columns:1fr}.composer{position:static}
+}
+@media(max-width:780px){
+  .wrap{width:min(100% - 20px,1280px)}
+  .top-inner{padding:8px 0 7px}.top-main{min-height:48px;gap:10px}.top-status{display:none}.brand-copy small{display:none}.brand-copy b{font-size:19px}.mark{width:38px;height:38px;border-radius:13px}.editor-link{padding:8px 11px;font-size:11px}
+  .nav{margin-left:-2px;margin-right:-2px;padding-top:7px}.nav a{padding:7px 11px;font-size:11px}
+  .mast{display:none}.ticker{margin-top:12px;border-radius:15px;min-height:45px}.ticker-label{padding:0 14px;font-size:12px}.ticker-track{padding:0 12px;gap:26px;font-size:12px}
+  .hero-shell{display:block;margin-top:12px}.hero{min-height:600px;border-radius:30px;display:flex;align-items:flex-end;background-position:38% center!important}
+  .hero:after{background:linear-gradient(180deg,rgba(246,251,252,.04) 0%,rgba(247,252,253,.20) 23%,rgba(248,252,253,.80) 52%,rgba(250,253,254,.995) 78%,rgba(250,253,254,1) 100%)}
+  .hero-content{min-height:600px;width:100%;max-width:none;padding:30px 22px 28px;justify-content:flex-end}
+  .hero-meta-row{gap:7px}.eyebrow,.hero-category{font-size:10px;padding:7px 9px}
+  .hero h1{font-size:clamp(42px,12.2vw,62px);line-height:.99;letter-spacing:-3px;margin:14px 0 12px;max-width:100%}.hero p{font-size:14px;line-height:1.9;margin:0;max-width:96%}
+  .hero-bottom{align-items:center;margin-top:14px;gap:10px}.hero-reading{display:none}.actions{gap:8px}.btn{padding:11px 14px;font-size:12px}
+  .hero-ghost{font-size:clamp(94px,28vw,150px);letter-spacing:-9px;left:10px;top:94px;transform:none;opacity:.72}
+  .hero-edition{top:16px;left:16px;font-size:8px;padding:8px 10px}.hero-corner{display:none}
+  .hero-side{margin-top:14px;display:flex;overflow-x:auto;scroll-snap-type:x mandatory;gap:10px;padding-bottom:4px;scrollbar-width:none}.hero-side::-webkit-scrollbar{display:none}.hero-side-title{display:none}.hero-side .mini{flex:0 0 84%;height:130px;scroll-snap-align:start;grid-template-columns:108px 1fr;padding:10px}
+  .news-rail{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;gap:10px;scrollbar-width:none}.news-rail::-webkit-scrollbar{display:none}.rail-item{flex:0 0 76%;min-height:118px;scroll-snap-align:start;padding:15px}
+  .section{margin-top:42px}.section-head{display:flex;align-items:flex-end}.section-title{font-size:28px}.section-head .searchbar{display:none}
+  .grid{grid-template-columns:1fr;gap:14px}.card{border-radius:23px;display:grid;grid-template-columns:132px minmax(0,1fr);min-height:150px}.card a{display:contents}.thumb{height:100%;min-height:150px;border-radius:0}.card-body{padding:15px 14px}.card h3{font-size:16px;line-height:1.55;margin:9px 0 6px}.card .excerpt{display:none}.card .meta{font-size:10px}.tag{font-size:10px;padding:5px 8px}
+  .article-wrap{display:block}.article{margin-top:14px;padding:24px 18px;border-radius:26px}.article h1{font-size:clamp(36px,10vw,52px);line-height:1.12;letter-spacing:-1.8px}.article-cover{height:64vw;min-height:230px;border-radius:20px}.article-body{font-size:17px;line-height:2.15}.article-aside{position:static;margin-top:12px}
+  .editor-shell{width:calc(100% - 16px);margin:8px auto 30px}.dash-top{padding:18px;border-radius:22px}.dash-top h1{font-size:27px!important}.dash-note{font-size:11px}.stats{display:flex;overflow-x:auto;gap:8px;scrollbar-width:none}.stats::-webkit-scrollbar{display:none}.stat{flex:0 0 42%;min-width:130px;padding:15px;border-radius:18px}.stat b{font-size:25px}
+  .dash-grid{display:block}.panel{padding:16px;border-radius:22px;margin-top:12px}.smartbar{grid-template-columns:1fr 1fr}.insights{grid-template-columns:1fr 1fr}.field input,.field textarea,.field select{font-size:16px;padding:13px}.field textarea{min-height:150px}.preview-media{height:190px}.article-row{grid-template-columns:1fr;gap:10px;padding:14px 0}.row-actions{justify-content:flex-start}.tiny{padding:9px 12px}.login{margin:7vh auto;padding:22px;border-radius:22px}
+}
+@media(max-width:430px){
+  .wrap{width:calc(100% - 14px)}.top-inner{padding-left:1px;padding-right:1px}.editor-link{font-size:10px}.hero{min-height:570px;border-radius:26px}.hero-content{min-height:570px;padding:26px 18px 22px}.hero h1{font-size:clamp(39px,11.8vw,54px);letter-spacing:-2.5px}.hero p{font-size:13.5px}.hero-side .mini{flex-basis:90%}.news-rail .rail-item{flex-basis:84%}.card{grid-template-columns:118px minmax(0,1fr)}.card-body{padding:13px 12px}.card h3{font-size:15px}.section-title{font-size:25px}.smartbar{grid-template-columns:1fr}.actions .btn{flex:1;text-align:center}.dash-top-row{align-items:flex-start}.dash-top-row .actions{width:100%}.dash-top-row .actions>*{flex:1;text-align:center}
+}
+
 `;
 
 function shell(title, body, extraHead='') {
@@ -162,7 +241,7 @@ function shell(title, body, extraHead='') {
 
 function header() {
   const nav = Object.entries(CATEGORY_LABELS).filter(([k])=>k!=='general').map(([k,v])=>`<a href="/category/${k}">${esc(v)}</a>`).join('');
-  return `<header class="top"><div class="wrap top-inner"><a class="brand" href="/"><span class="mark">ن</span><span>نگاه جوان</span></a><nav class="nav">${nav}</nav><span class="grow"></span><a class="editor-link" href="/editorial">تحریریه</a></div></header>`;
+  return `<header class="top"><div class="wrap top-inner"><div class="top-main"><a class="brand" href="/"><span class="mark">ن</span><span class="brand-copy"><b>نگاه جوان</b><small>NEGAAH JAVAN / NEWSROOM</small></span></a><div class="top-status"><span class="pulse"></span><span>به‌روز و زنده</span></div><span class="grow"></span><a class="editor-link" href="/editorial">ورود به تحریریه</a></div><nav class="nav" aria-label="دسته‌های خبر">${nav}</nav></div></header>`;
 }
 
 function footer() {
@@ -199,10 +278,10 @@ export function homePage(data) {
   const heroMediaClass = hero?.hero_image ? '' : ` smart-cover cover-${esc(hero?.category || 'general')}`;
   const heroBg = hero?.hero_image ? imgStyle(hero.hero_image) : (hero ? `style="background-image:url('/cover/${encodeURIComponent(hero.slug)}.svg');background-size:cover;background-position:center"` : '');
   const heroVisual = !hero?.hero_image && hero ? `<span class="cover-category">${esc(CATEGORY_LABELS[hero.category] || 'خبر')}</span><span class="cover-mark"><span class="cover-symbol">ن</span><span>انتخاب هوشمند تحریریه</span></span>` : '';
-  const heroBlock = hero ? `<section class="hero${heroMediaClass} glass" ${heroBg}><div class="hero-type" aria-hidden="true">نگاه<br>جوان</div><div class="hero-number" aria-hidden="true">01 / TOP STORY</div>${heroVisual}<div class="hero-content"><span class="eyebrow"><span class="dot"></span>${hero.status==='breaking'?'خبر فوری':'تیتر اول نگاه جوان'}</span><h1>${esc(hero.title)}</h1><p>${esc(hero.excerpt || 'جزئیات کامل این خبر را در صفحه خبر بخوانید.')}</p><div class="actions"><a class="btn btn-primary" href="/news/${encodeURIComponent(hero.slug)}">مطالعه خبر</a><a class="btn btn-soft" href="#latest">آخرین خبرها</a></div></div></section>` : `<section class="hero smart-cover cover-general glass"><div class="hero-type" aria-hidden="true">نگاه<br>جوان</div><div class="hero-number" aria-hidden="true">01 / FRONT PAGE</div><div class="hero-content"><span class="eyebrow"><span class="dot"></span>رسانه خبری نسل امروز</span><h1>خبر را سریع‌تر نبین؛<br><strong>روشن‌تر ببین.</strong></h1><p>سیاست، حوادث، اقتصاد، جامعه، فناوری، فرهنگ، ورزش و جهان؛ با روایت دقیق، طراحی روشن و تحریریه هوشمند.</p><div class="actions"><a class="btn btn-primary" href="/editorial">ورود به تحریریه</a><a class="btn btn-soft" href="#latest">مشاهده خبرها</a></div></div></section>`;
+  const heroBlock = hero ? `<section class="hero${heroMediaClass} glass" ${heroBg}><div class="hero-ghost" aria-hidden="true">نگاه</div><div class="hero-edition" aria-hidden="true">N° 01 · TOP STORY · NEGAAH JAVAN</div>${heroVisual}<div class="hero-content"><div class="hero-meta-row"><span class="eyebrow"><span class="dot"></span>${hero.status==='breaking'?'خبر فوری':'تیتر اول نگاه جوان'}</span><span class="hero-category">${esc(CATEGORY_LABELS[hero.category] || 'خبر')}</span></div><h1>${esc(hero.title)}</h1><p>${esc(hero.excerpt || 'جزئیات کامل این خبر را در صفحه خبر بخوانید.')}</p><div class="hero-bottom"><div class="actions"><a class="btn btn-primary" href="/news/${encodeURIComponent(hero.slug)}">مطالعه کامل خبر</a><a class="btn btn-soft" href="#latest">آخرین خبرها</a></div><div class="hero-reading"><b>${readingMinutes(hero.body || '')}</b><span>دقیقه مطالعه</span></div></div></div><div class="hero-corner" aria-hidden="true"><span>NEWS</span><span>EDITORIAL</span><span>2026</span></div></section>` : `<section class="hero hero-empty glass"><div class="hero-ghost" aria-hidden="true">نگاه</div><div class="hero-edition" aria-hidden="true">N° 01 · FRONT PAGE · NEGAAH JAVAN</div><div class="hero-content"><div class="hero-meta-row"><span class="eyebrow"><span class="dot"></span>رسانه خبری نسل امروز</span><span class="hero-category">خانه خبر</span></div><h1>خبر را فقط نبین؛<br><strong>زاویه‌اش را ببین.</strong></h1><p>سیاست، حوادث، اقتصاد، جامعه، فناوری، فرهنگ، ورزش و جهان؛ با روایت روشن، تایپوگرافی جسور و تجربه‌ای ساخته‌شده برای موبایل.</p><div class="hero-bottom"><div class="actions"><a class="btn btn-primary" href="/editorial">ورود به تحریریه</a><a class="btn btn-soft" href="#latest">مشاهده خبرها</a></div><div class="hero-reading"><b>24/7</b><span>اتاق خبر زنده</span></div></div></div><div class="hero-corner" aria-hidden="true"><span>NEWS</span><span>EDITORIAL</span><span>MOBILE FIRST</span></div></section>`;
   const tickerItems = data.breaking.length ? data.breaking.map(a=>`<a href="/news/${encodeURIComponent(a.slug)}">${esc(a.title)}</a>`).join('') : `<span>نوار خبر فوری آماده است؛ یک خبر را با وضعیت «فوری» منتشر کنید.</span>`;
   const latest = data.latest || [];
-  const side = latest.filter(a=>!hero || a.id!==hero.id).slice(0,4);
+  const side = latest.filter(a=>!hero || a.id!==hero.id).slice(0,3);
   const setup = !data.configured ? `<div class="notice">D1 هنوز متصل نشده است. Binding دیتابیس باید با نام <b>DB</b> تنظیم شود.</div>` : '';
   const rail = latest.slice(4,8).map((a,i)=>`<a class="rail-item glass" href="/news/${encodeURIComponent(a.slug)}"><span class="rail-number">۰${i+1}</span><span class="tag">${esc(CATEGORY_LABELS[a.category]||'خبر')}</span><h4>${esc(a.title)}</h4></a>`).join('');
   const sectionDefs=[
@@ -215,7 +294,7 @@ export function homePage(data) {
     ['فرهنگ','culture','هنر، رسانه و فرهنگ'],
     ['ورزش','sports','مسابقات و چهره‌های ورزشی']
   ];
-  return shell('صفحه اصلی', `${header()}<div class="mast"><div class="wrap"><span class="mast-live"><span class="pulse"></span>نگاه جوان آنلاین است</span><span>خبر، تحلیل و دیدگاه با مرزبندی روشن</span></div></div><main class="wrap"><div class="ticker glass"><div class="ticker-label">فوری</div><div class="ticker-track">${tickerItems}</div></div>${setup}<div class="hero-shell">${heroBlock}<aside class="hero-side"><div class="hero-side-title">در جریان باشید</div>${side.map(mini).join('') || '<div class="empty glass">خبرهای بعدی اینجا نمایش داده می‌شوند.</div>'}</aside></div>${rail?`<div class="news-rail">${rail}</div>`:''}<section id="latest" class="section"><div class="section-head"><div><div class="kicker">NEWSROOM</div><div class="section-title">آخرین خبرها</div><div class="section-sub">تازه‌ترین خروجی تحریریه نگاه جوان</div></div><form class="searchbar" action="/search"><input name="q" placeholder="جست‌وجوی خبر…"><button class="btn btn-soft">جست‌وجو</button></form></div>${latest.length?`<div class="grid">${latest.slice(0,6).map(card).join('')}</div>`:`<div class="empty glass">هنوز خبری منتشر نشده است.</div>`}</section>${sectionDefs.map(([t,k,sub])=>section(t,k,data.sections?.[k]||[],sub)).join('')}</main>${footer()}`);
+  return shell('صفحه اصلی', `${header()}<div class="mast"><div class="wrap"><span class="mast-live"><span class="pulse"></span>نگاه جوان آنلاین است</span><span>خبر، تحلیل و دیدگاه با مرزبندی روشن</span></div></div><main class="wrap"><div class="ticker glass"><div class="ticker-label">فوری</div><div class="ticker-track">${tickerItems}</div></div>${setup}<div class="hero-shell">${heroBlock}<aside class="hero-side"><div class="hero-side-title"><span>03</span><b>در جریان باشید</b><small>خبرهای بعدی روی میز سردبیر</small></div>${side.map(mini).join('') || '<div class="empty glass">خبرهای بعدی اینجا نمایش داده می‌شوند.</div>'}</aside></div>${rail?`<div class="news-rail">${rail}</div>`:''}<section id="latest" class="section"><div class="section-head"><div><div class="kicker">NEWSROOM</div><div class="section-title">آخرین خبرها</div><div class="section-sub">تازه‌ترین خروجی تحریریه نگاه جوان</div></div><form class="searchbar" action="/search"><input name="q" placeholder="جست‌وجوی خبر…"><button class="btn btn-soft">جست‌وجو</button></form></div>${latest.length?`<div class="grid">${latest.slice(0,6).map(card).join('')}</div>`:`<div class="empty glass">هنوز خبری منتشر نشده است.</div>`}</section>${sectionDefs.map(([t,k,sub])=>section(t,k,data.sections?.[k]||[],sub)).join('')}</main>${footer()}`);
 }
 
 export function articlePage(a) {

@@ -536,7 +536,7 @@ body:before{opacity:.28;background-size:56px 56px}
 `;
 
 function shell(title, body, extraHead='') {
-  return `<!doctype html><html lang="fa" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#f4f8f7"><meta name="negahjavan-brand" content="wordmark-red-v1"><link rel="icon" href="/assets/negahjavan-mark-v1.svg" type="image/svg+xml"><link rel="preload" href="/assets/vazirmatn-v33.woff2" as="font" type="font/woff2" crossorigin><title>${esc(title)} | نگاه جوان</title><meta name="description" content="نگاه جوان؛ رسانه خبری برای روایت روشن و دقیق تحولات ایران و جهان"><style>@font-face{font-family:Vazirmatn;src:url(/assets/vazirmatn-v33.woff2) format('woff2');font-weight:100 900;font-display:swap}${css}${premiumTheme}</style>${extraHead}</head><body>${body}</body></html>`;
+  return `<!doctype html><html lang="fa" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#f4f8f7"><meta name="negahjavan-brand" content="wordmark-red-v2"><link rel="icon" href="/assets/negahjavan-mark-v1.svg" type="image/svg+xml"><link rel="preload" href="/assets/vazirmatn-v33.woff2" as="font" type="font/woff2" crossorigin><title>${esc(title)} | نگاه جوان</title><meta name="description" content="نگاه جوان؛ رسانه خبری برای روایت روشن و دقیق تحولات ایران و جهان"><style>@font-face{font-family:Vazirmatn;src:url(/assets/vazirmatn-v33.woff2) format('woff2');font-weight:100 900;font-display:swap}${css}${premiumTheme}</style>${extraHead}</head><body>${body}</body></html>`;
 }
 
 function header() {

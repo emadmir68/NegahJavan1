@@ -1,5 +1,6 @@
 import { CATEGORY_LABELS } from './db.js';
 import { readingMinutes } from './smart.js';
+import { premiumTheme } from './theme-premium.js';
 
 const esc = (v='') => String(v).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const fmtDate = (v) => {
@@ -534,7 +535,7 @@ body:before{opacity:.28;background-size:56px 56px}
 `;
 
 function shell(title, body, extraHead='') {
-  return `<!doctype html><html lang="fa" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#f4f8f7"><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Manrope:wght@700;800&family=Vazirmatn:wght@400;500;600;700;800;900&display=swap" rel="stylesheet"><title>${esc(title)} | نگاه جوان</title><meta name="description" content="نگاه جوان؛ رسانه خبری برای روایت روشن و دقیق تحولات ایران و جهان"><style>${css}</style>${extraHead}</head><body>${body}</body></html>`;
+  return `<!doctype html><html lang="fa" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#f4f8f7"><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Manrope:wght@700;800&family=Vazirmatn:wght@400;500;600;700;800;900&display=swap" rel="stylesheet"><title>${esc(title)} | نگاه جوان</title><meta name="description" content="نگاه جوان؛ رسانه خبری برای روایت روشن و دقیق تحولات ایران و جهان"><style>${css}${premiumTheme}</style>${extraHead}</head><body>${body}</body></html>`;
 }
 
 function header() {

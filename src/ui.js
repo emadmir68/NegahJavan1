@@ -38,7 +38,7 @@ function footer() {
 }
 
 function card(a) {
-  return `<article class="card glass"><a href="/news/${encodeURIComponent(a.slug)}"><div class="thumb" ${smartImgStyle(a)}></div><div class="card-body"><span class="tag">${esc(CATEGORY_LABELS[a.category] || 'خبر')}</span><h3>${esc(a.title)}</h3><div class="meta"><span>${esc(fmtDate(a.published_at))}</span><span>${Number(a.views||0).toLocaleString('en-US')} بازدید</span></div>${a.excerpt?`<p class="excerpt">${esc(a.excerpt)}</p>`:''}</div></a></article>`;
+  return `<article class="card glass"><a href="/news/${encodeURIComponent(a.slug)}"><div class="thumb" ${smartImgStyle(a)}></div><div class="card-body"><span class="tag">${esc(CATEGORY_LABELS[a.category] || 'خبر')}</span><h3>${esc(a.title)}</h3><div class="meta"><span>${esc(fmtDate(a.published_at))}</span><span>${Number(a.views||0).toLocaleString('en-US')} بازدید</span><span>${readMins(a.body)} دقیقه مطالعه</span></div>${a.excerpt?`<p class="excerpt">${esc(a.excerpt)}</p>`:''}</div></a></article>`;
 }
 
 function mini(a) {

@@ -83,27 +83,25 @@ function publishedWhere() {
 }
 
 export async function getHomeData(env) {
-  if (!(await ensureSchema(env))) return { configured: false, breaking: [], hero: null, latest: [], sections: {} };
-  const [breaking, hero, latest, politics, incidents, world, economy] = await Promise.all([
-    env.DB.prepare(`SELECT * FROM articles WHERE status='breaking' AND published_at IS NOT NULL ORDER BY published_at DESC LIMIT 8`).all(),
+  if (!(await ensureSchema(env))) return { configured: false, breaking: [], hero: null, latest: [], trending: [], sections: {} };
+  const sectionNames = ['politics','incidents','world','economy','society','technology','culture','sports'];
+  const sectionQueries = sectionNames.map(category =>
+    env.DB.prepare(`SELECT * FROM articles WHERE ${publishedWhere()} AND category=? ORDER BY published_at DESC LIMIT 6`).bind(category).all()
+  );
+  const [breaking, hero, latest, trending, ...sectionResults] = await Promise.all([
+    env.DB.prepare(`SELECT * FROM articles WHERE status='breaking' AND published_at IS NOT NULL ORDER BY published_at DESC LIMIT 10`).all(),
     env.DB.prepare(`SELECT * FROM articles WHERE ${publishedWhere()} ORDER BY CASE WHEN status='breaking' THEN 0 ELSE 1 END, published_at DESC LIMIT 1`).first(),
-    env.DB.prepare(`SELECT * FROM articles WHERE ${publishedWhere()} ORDER BY published_at DESC LIMIT 12`).all(),
-    env.DB.prepare(`SELECT * FROM articles WHERE ${publishedWhere()} AND category='politics' ORDER BY published_at DESC LIMIT 5`).all(),
-    env.DB.prepare(`SELECT * FROM articles WHERE ${publishedWhere()} AND category='incidents' ORDER BY published_at DESC LIMIT 5`).all(),
-    env.DB.prepare(`SELECT * FROM articles WHERE ${publishedWhere()} AND category='world' ORDER BY published_at DESC LIMIT 5`).all(),
-    env.DB.prepare(`SELECT * FROM articles WHERE ${publishedWhere()} AND category='economy' ORDER BY published_at DESC LIMIT 5`).all()
+    env.DB.prepare(`SELECT * FROM articles WHERE ${publishedWhere()} ORDER BY published_at DESC LIMIT 16`).all(),
+    env.DB.prepare(`SELECT * FROM articles WHERE ${publishedWhere()} ORDER BY views DESC, published_at DESC LIMIT 6`).all(),
+    ...sectionQueries
   ]);
   return {
     configured: true,
     breaking: breaking.results || [],
     hero,
     latest: latest.results || [],
-    sections: {
-      politics: politics.results || [],
-      incidents: incidents.results || [],
-      world: world.results || [],
-      economy: economy.results || []
-    }
+    trending: trending.results || [],
+    sections: Object.fromEntries(sectionNames.map((name, i) => [name, sectionResults[i]?.results || []]))
   };
 }
 

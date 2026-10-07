@@ -1,6 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
+import vm from 'node:vm';
+import { editorialPage } from '../src/ui.js';
 import { makeSlug, CATEGORY_LABELS } from '../src/db.js';
 
 const root = new URL('../', import.meta.url);
@@ -47,4 +49,12 @@ test('smart newsroom routes and automatic covers are wired', async () => {
   assert.match(db, /technology/);
   assert.match(db, /culture/);
   assert.match(db, /sports/);
+});
+
+
+test('editorial browser script parses cleanly', () => {
+  const page = editorialPage();
+  const matches = [...page.matchAll(/<script>([\s\S]*?)<\/script>/g)];
+  assert.ok(matches.length >= 1);
+  for (const match of matches) new vm.Script(match[1]);
 });

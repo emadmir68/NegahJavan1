@@ -86,15 +86,52 @@ function xmlEscape(value="") {
 }
 
 function coverSvg(article) {
-  const themes={politics:["#071a2f","#0e7490","#67e8f9"],incidents:["#2b0b13","#9f1239","#fb7185"],world:["#10112b","#4338ca","#a5b4fc"],economy:["#11231c","#047857","#6ee7b7"],society:["#1e1730","#7e22ce","#d8b4fe"],technology:["#071d24","#0f766e","#5eead4"],culture:["#24140b","#b45309","#fcd34d"],sports:["#12200d","#3f6212","#bef264"],general:["#111827","#334155","#93c5fd"]};
+  const themes={
+    politics:["#071725","#0d3041","#43c5d4"],
+    incidents:["#1b0b13","#4e1723","#ff6478"],
+    world:["#0c1026","#202b57","#74a7ff"],
+    economy:["#0c1916","#173e34","#d7b65b"],
+    society:["#121426","#26324f","#9ab4ff"],
+    technology:["#06191d","#0c4145","#56e0d5"],
+    culture:["#1b1020","#4a2447","#d893d1"],
+    sports:["#0b1915","#184537","#6bd8a6"],
+    general:["#07151f","#133040","#67d3df"]
+  };
   const [a,b,k]=themes[article?.category]||themes.general;
-  const words=String(article?.title||"نگاه جوان").split(/\s+/).filter(Boolean);
-  const lines=[]; let line="";
-  for(const w of words){const n=line?`${line} ${w}`:w;if(n.length>28&&line){lines.push(line);line=w}else line=n;if(lines.length===2)break}
-  if(line&&lines.length<3)lines.push(line);
-  const tspans=lines.slice(0,3).map((x,i)=>`<tspan x="1050" dy="${i?76:0}">${xmlEscape(x)}</tspan>`).join("");
   const label=xmlEscape(CATEGORY_LABELS[article?.category]||"خبر");
-  return `<?xml version="1.0" encoding="UTF-8"?><svg xmlns="http://www.w3.org/2000/svg" width="1200" height="675" viewBox="0 0 1200 675"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="${a}"/><stop offset=".56" stop-color="${b}"/><stop offset="1" stop-color="${a}"/></linearGradient><radialGradient id="r"><stop stop-color="${k}" stop-opacity=".28"/><stop offset="1" stop-color="${k}" stop-opacity="0"/></radialGradient></defs><rect width="1200" height="675" fill="url(#g)"/><circle cx="160" cy="120" r="330" fill="url(#r)"/><circle cx="980" cy="580" r="350" fill="url(#r)"/><g opacity=".14" stroke="#fff"><path d="M70 105H1130M70 570H1130"/><path d="M70 105V570M1130 105V570"/></g><rect x="820" y="72" width="310" height="58" rx="29" fill="#fff" fill-opacity=".12" stroke="#fff" stroke-opacity=".18"/><text x="1094" y="110" fill="#fff" text-anchor="end" font-family="Tahoma,Arial" font-size="25" font-weight="700">${label} · نگاه جوان</text><text x="1050" y="282" fill="#fff" text-anchor="end" font-family="Tahoma,Arial" font-size="58" font-weight="800" direction="rtl">${tspans}</text><text x="1050" y="560" fill="#d9f8ff" text-anchor="end" font-family="Tahoma,Arial" font-size="23" direction="rtl">روایت روشن خبر برای نسل امروز</text><rect x="70" y="72" width="64" height="64" rx="20" fill="${k}"/><text x="102" y="116" text-anchor="middle" fill="#06121a" font-family="Tahoma,Arial" font-size="34" font-weight="900">ن</text></svg>`;
+  const title=xmlEscape(String(article?.title||"نگاه جوان").slice(0,90));
+  return `<?xml version="1.0" encoding="UTF-8"?>
+  <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="675" viewBox="0 0 1200 675">
+    <defs>
+      <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+        <stop stop-color="${a}"/><stop offset=".52" stop-color="${b}"/><stop offset="1" stop-color="${a}"/>
+      </linearGradient>
+      <radialGradient id="glow"><stop stop-color="${k}" stop-opacity=".72"/><stop offset="1" stop-color="${k}" stop-opacity="0"/></radialGradient>
+      <linearGradient id="glass" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#fff" stop-opacity=".17"/><stop offset="1" stop-color="#fff" stop-opacity=".035"/></linearGradient>
+      <filter id="blur"><feGaussianBlur stdDeviation="18"/></filter>
+    </defs>
+    <rect width="1200" height="675" fill="url(#bg)"/>
+    <circle cx="1050" cy="80" r="310" fill="url(#glow)" filter="url(#blur)" opacity=".72"/>
+    <circle cx="120" cy="620" r="280" fill="url(#glow)" filter="url(#blur)" opacity=".38"/>
+    <g opacity=".08" stroke="#fff"><path d="M0 118H1200M0 236H1200M0 354H1200M0 472H1200M0 590H1200"/><path d="M200 0V675M400 0V675M600 0V675M800 0V675M1000 0V675"/></g>
+    <g transform="translate(78 72) rotate(-4 430 250)">
+      <rect width="850" height="520" rx="58" fill="url(#glass)" stroke="#fff" stroke-opacity=".16"/>
+      <rect x="28" y="28" width="794" height="464" rx="44" fill="#06131c" fill-opacity=".16" stroke="#fff" stroke-opacity=".08"/>
+    </g>
+    <circle cx="985" cy="132" r="88" fill="${k}" fill-opacity=".22" stroke="#fff" stroke-opacity=".16"/>
+    <circle cx="985" cy="132" r="54" fill="${k}" fill-opacity=".52"/>
+    <rect x="842" y="78" width="285" height="54" rx="27" fill="#fff" fill-opacity=".11" stroke="#fff" stroke-opacity=".17"/>
+    <text x="1090" y="112" text-anchor="end" fill="#fff" font-size="23" font-weight="700" font-family="Tahoma,Arial,sans-serif" direction="rtl">${label} · نگاه جوان</text>
+    <text x="1090" y="332" text-anchor="end" fill="#fff" font-size="68" font-weight="800" font-family="Tahoma,Arial,sans-serif" direction="rtl" unicode-bidi="plaintext">${title}</text>
+    <text x="1088" y="412" text-anchor="end" fill="#fff" fill-opacity=".72" font-size="22" font-family="Tahoma,Arial,sans-serif" direction="rtl">روایت روشن خبر برای نسل امروز</text>
+    <g transform="translate(82 72)">
+      <rect width="208" height="58" rx="29" fill="#fff" fill-opacity=".12" stroke="#fff" stroke-opacity=".18"/>
+      <circle cx="34" cy="29" r="20" fill="${k}"/>
+      <text x="34" y="36" text-anchor="middle" fill="#06131b" font-size="22" font-weight="900" font-family="Tahoma,Arial">ن</text>
+      <text x="73" y="36" fill="#fff" font-size="20" font-weight="700" font-family="Tahoma,Arial,sans-serif" direction="rtl">نگاه جوان</text>
+    </g>
+    <text x="92" y="610" fill="#fff" fill-opacity=".42" font-size="16" font-family="Arial,sans-serif" letter-spacing="3">NEGAAH JAVAN · EDITORIAL COVER</text>
+  </svg>`;
 }
 
 export default {

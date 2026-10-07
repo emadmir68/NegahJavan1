@@ -50,4 +50,29 @@ function section(title, slug, items, subtitle='') {
 export function homePage(data) {
   const hero = data.hero;
   const heroBg = hero?.hero_image ? imgStyle(hero.hero_image) : '';
-  const heroBlock = hero ? `<section class="hero glass" ${heroBg}><div class="hero-content"><span class="eyebrow"><span class="dot"></span>${hero.status==='breaking'?'خبر فوری':'انتخاب سردبیر'}</span><h1>${esc(hero.title)}</h1><p>${esc(hero.excerpt || 'متن کامل خبر و جزئیات بیشتر را در صفحه خبر بخوانید.')}</p><div class="actions"><a class="btn btn-primary" href="/news/${encodeURIComponent(hero.slug)}">مطالعه خبر</a><a class="btn btn-soft" href="#latest">آخرین خبرها</a></div></div></section>` : `<section class="hero glass"><div class="hero-content"><span class="eyebrow"><span class="dot"></span>نسخه جدید نگاه جوان<
+  const heroBlock = hero ? `<section class="hero glass" ${heroBg}><div class="hero-content"><span class="eyebrow"><span class="dot"></span>${hero.status==='breaking'?'خبر فوری':'انتخاب سردبیر'}</span><h1>${esc(hero.title)}</h1><p>${esc(hero.excerpt || 'متن کامل خبر و جزئیات بیشتر را در صفحه خبر بخوانید.')}</p><div class="actions"><a class="btn btn-primary" href="/news/${encodeURIComponent(hero.slug)}">مطالعه خبر</a><a class="btn btn-soft" href="#latest">آخرین خبرها</a></div></div></section>` : `<section class="hero glass"><div class="hero-content"><span class="eyebrow"><span class="dot"></span>نسخه جدید نگاه جوان</span><h1>خبر را سریع‌تر نبین؛ روشن‌تر ببین.</h1><p>صفحه اصلی تازه نگاه جوان برای پوشش سیاست، حوادث، اقتصاد، جامعه، فناوری، فرهنگ، ورزش و تحولات بین‌المللی آماده است. اولین خبر را از پنل تحریریه منتشر کنید.</p><div class="actions"><a class="btn btn-primary" href="/editorial">ورود به تحریریه</a></div></div></section>`;
+  const tickerItems = data.breaking.length ? data.breaking.map(a=>`<a href="/news/${encodeURIComponent(a.slug)}">${esc(a.title)}</a>`).join('') : `<span>برای نمایش نوار فوری، یک خبر را با وضعیت «فوری» منتشر کنید.</span>`;
+  const latest = data.latest || [];
+  const side = latest.slice(3,8);
+  const setup = !data.configured ? `<div class="notice">پایگاه D1 هنوز به Worker متصل نشده است. سایت عمومی سالم است؛ پس از اتصال Binding با نام <b>DB</b>، دیتابیس به‌صورت خودکار آماده می‌شود.</div>` : '';
+  return shell('صفحه اصلی', `${header()}<main class="wrap"><div class="ticker glass"><div class="ticker-label">فوری</div><div class="ticker-track">${tickerItems}</div></div>${setup}${heroBlock}<section id="latest" class="section"><div class="section-head"><div><div class="section-title">آخرین خبرها</div><div class="section-sub">تازه‌ترین خروجی تحریریه نگاه جوان</div></div><form class="searchbar" action="/search"><input name="q" placeholder="جست‌وجوی خبر…"><button class="btn btn-soft">جست‌وجو</button></form></div>${latest.length?`<div class="split"><div class="grid">${latest.slice(0,3).map(card).join('')}</div><div class="feature-list">${side.map(mini).join('')}</div></div>`:`<div class="empty glass">هنوز خبری منتشر نشده است.</div>`}</section>${section('سیاست','politics',data.sections?.politics||[],'تحولات سیاسی با تفکیک خبر از تحلیل')}${section('حوادث','incidents',data.sections?.incidents||[],'روایت دقیق رویدادها و حوادث مهم')}${section('بین‌الملل','world',data.sections?.world||[],'تحولات جهان و منطقه')}${section('اقتصاد','economy',data.sections?.economy||[],'بازار، انرژی و اقتصاد ایران و جهان')}</main>${footer()}`);
+}
+
+export function articlePage(a) {
+  if (!a) return notFoundPage();
+  const source = a.source_name || a.source_url ? `<div class="source"><b>منبع:</b> ${a.source_url?`<a href="${esc(a.source_url)}" rel="noopener noreferrer">${esc(a.source_name || a.source_url)}</a>`:esc(a.source_name)}</div>` : '';
+  return shell(a.title, `${header()}<main class="wrap"><article class="article glass"><span class="tag">${esc(CATEGORY_LABELS[a.category] || 'خبر')}</span><h1>${esc(a.title)}</h1><div class="meta"><span>${esc(fmtDate(a.published_at))}</span><span>${Number(a.views||0).toLocaleString('fa-IR')} بازدید</span></div>${a.excerpt?`<p class="excerpt" style="font-size:18px">${esc(a.excerpt)}</p>`:''}${a.hero_image?`<div class="article-cover" ${imgStyle(a.hero_image)}></div>`:''}<div class="article-body">${esc(a.body)}</div>${source}</article></main>${footer()}`);
+}
+
+export function listingPage(title, items, query='') {
+  return shell(title, `${header()}<main class="wrap"><section class="section"><div class="section-head"><div><div class="section-title">${esc(title)}</div>${query?`<div class="section-sub">نتایج برای «${esc(query)}»</div>`:''}</div></div>${items.length?`<div class="grid">${items.map(card).join('')}</div>`:`<div class="empty glass">نتیجه‌ای پیدا نشد.</div>`}</section></main>${footer()}`);
+}
+
+export function notFoundPage() {
+  return shell('یافت نشد', `${header()}<main class="wrap"><div class="empty glass" style="margin-top:40px"><h1 style="font-size:42px">۴۰۴</h1><p>صفحه موردنظر پیدا نشد.</p><a class="btn btn-primary" href="/">بازگشت به صفحه اصلی</a></div></main>${footer()}`);
+}
+
+export function editorialPage() {
+  const editorJs = `
+const $=s=>document.querySelector(s);const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));let editing=null;
+async function api(url,opt={}){const r=await fetch(url,{headers:{'Content-Type':'application/json',...(opt.headers||{})},...opt});const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error||'خطای سرور');

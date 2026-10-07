@@ -1,3 +1,5 @@
+import { wordmarkPaths, wordmarkViewBox, monogramPaths, monogramViewBox } from './brand-identity.js';
+
 export function icon(name = 'arrow', className = '') {
   const paths = {
     arrow: '<path d="M19 12H5m6-6-6 6 6 6"/>',
@@ -22,8 +24,12 @@ export function icon(name = 'arrow', className = '') {
   return `<svg class="icon ${className}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths[name] || paths.arrow}</svg>`;
 }
 
-export function brandMark(id = 'brand') {
-  return `<svg class="brand-symbol" viewBox="0 0 48 48" fill="none" aria-hidden="true"><defs><linearGradient id="${id}" x1="7" y1="4" x2="42" y2="45" gradientUnits="userSpaceOnUse"><stop stop-color="#5ad4c4"/><stop offset=".5" stop-color="#089c97"/><stop offset="1" stop-color="#087d81"/></linearGradient></defs><rect x="1" y="1" width="46" height="46" rx="16" fill="url(#${id})"/><path d="M9 24s6-9 15-9 15 9 15 9-6 9-15 9S9 24 9 24Z" stroke="white" stroke-width="2"/><circle cx="24" cy="24" r="5" fill="white"/><circle cx="25" cy="22.5" r="1.5" fill="#159e9c"/></svg>`;
+export function brandMark() {
+  return `<svg class="brand-symbol" viewBox="${monogramViewBox}" fill="none" aria-hidden="true" focusable="false">${monogramPaths}</svg>`;
+}
+
+export function brandWordmark() {
+  return `<svg class="brand-wordmark" viewBox="${wordmarkViewBox}" aria-hidden="true" focusable="false">${wordmarkPaths}</svg>`;
 }
 
 export function observatoryArt() {
@@ -62,5 +68,5 @@ export function observatoryArt() {
     <circle cx="367" cy="177" r="5" fill="white" fill-opacity=".9"/>
   </g>
   <circle cx="507" cy="104" r="5" fill="#27a49d"/><circle cx="92" cy="242" r="3" fill="#6fc6c0"/><path d="M484 404h16m-8-8v16" stroke="#56968f" stroke-width="1.5"/>
-  </svg><div class="art-note art-note-top"><span class="note-dot"></span>هر خبر، یک زاویه تازه</div><div class="art-note art-note-bottom">${brandMark('art-brand')}<span><b>نگاه جوان</b><small>جهان را دقیق‌تر ببین.</small></span>${icon('northeast')}</div></div>`;
+  </svg><div class="art-note art-note-top"><span class="note-dot"></span>هر خبر، یک زاویه تازه</div><div class="art-note art-note-bottom"><span class="art-brand-lockup">${brandWordmark()}<small>جهان را دقیق‌تر ببین.</small></span>${icon('northeast')}</div></div>`;
 }

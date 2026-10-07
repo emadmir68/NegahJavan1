@@ -4,6 +4,7 @@ import { editorialPage } from './ui.js';
 import { homePage, articlePage, listingPage, notFoundPage } from './ui-public.js';
 import { vazirmatnBase64 } from './font.js';
 import { coverSvg as renderCoverSvg } from './cover.js';
+import { wordmarkSvg, monogramSvg } from './brand-identity.js';
 
 const html = (body, status=200) => new Response(body, { status, headers: { 'Content-Type':'text/html; charset=utf-8', 'Cache-Control':'no-store', 'X-Content-Type-Options':'nosniff', 'Referrer-Policy':'strict-origin-when-cross-origin' } });
 const json = (data, status=200, headers={}) => new Response(JSON.stringify(data), { status, headers: { 'Content-Type':'application/json; charset=utf-8', 'Cache-Control':'no-store', 'X-Content-Type-Options':'nosniff', ...headers } });
@@ -98,6 +99,10 @@ export default {
     const path = url.pathname;
 
     try {
+      if (['/assets/negahjavan-wordmark-v1.svg', '/assets/negahjavan-mark-v1.svg'].includes(path) && ['GET', 'HEAD'].includes(request.method)) {
+        const image = path.endsWith('wordmark-v1.svg') ? wordmarkSvg : monogramSvg;
+        return new Response(request.method === 'HEAD' ? null : image, { headers: { 'Content-Type':'image/svg+xml; charset=utf-8', 'Cache-Control':'public, max-age=31536000, immutable', 'X-Content-Type-Options':'nosniff' } });
+      }
       if (path === '/assets/vazirmatn-v33.woff2' && ['GET', 'HEAD'].includes(request.method)) {
         const data = request.method === 'HEAD' ? null : Uint8Array.from(atob(vazirmatnBase64), character => character.charCodeAt(0));
         return new Response(data, { headers: { 'Content-Type':'font/woff2', 'Cache-Control':'public, max-age=31536000, immutable', 'X-Content-Type-Options':'nosniff' } });

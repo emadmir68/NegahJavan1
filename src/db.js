@@ -1,3 +1,5 @@
+import { normalizePersianText, smartTitle, smartBody, autoExcerpt, inferCategory } from './smart.js';
+
 export const CATEGORY_LABELS = {
   politics: "سیاسی",
   incidents: "حوادث",
@@ -74,8 +76,21 @@ export function makeSlug(title) {
     .replace(/[^\p{L}\p{N}-]+/gu, "")
     .replace(/-+/g, "-")
     .replace(/^-|-$/g, "")
-    .slice(0, 80);
+    .slice(0, 86);
   return base || `news-${Date.now()}`;
+}
+
+async function uniqueSlug(env, wanted, excludeId = null) {
+  const base = makeSlug(wanted);
+  let slug = base;
+  for (let i = 0; i < 20; i++) {
+    const row = excludeId
+      ? await env.DB.prepare(`SELECT id FROM articles WHERE slug=? AND id<>? LIMIT 1`).bind(slug, excludeId).first()
+      : await env.DB.prepare(`SELECT id FROM articles WHERE slug=? LIMIT 1`).bind(slug).first();
+    if (!row) return slug;
+    slug = `${base}-${i + 2}`;
+  }
+  return `${base}-${Date.now()}`;
 }
 
 function publishedWhere() {
@@ -83,25 +98,24 @@ function publishedWhere() {
 }
 
 export async function getHomeData(env) {
-  if (!(await ensureSchema(env))) return { configured: false, breaking: [], hero: null, latest: [], trending: [], sections: {} };
-  const sectionNames = ['politics','incidents','world','economy','society','technology','culture','sports'];
-  const sectionQueries = sectionNames.map(category =>
-    env.DB.prepare(`SELECT * FROM articles WHERE ${publishedWhere()} AND category=? ORDER BY published_at DESC LIMIT 6`).bind(category).all()
-  );
-  const [breaking, hero, latest, trending, ...sectionResults] = await Promise.all([
+  if (!(await ensureSchema(env))) return { configured: false, breaking: [], hero: null, latest: [], sections: {} };
+  const sectionQueries = Object.keys(CATEGORY_LABELS)
+    .filter(k => k !== 'general')
+    .map(k => env.DB.prepare(`SELECT * FROM articles WHERE ${publishedWhere()} AND category=? ORDER BY published_at DESC LIMIT 6`).bind(k).all());
+  const [breaking, hero, latest, ...sectionsRaw] = await Promise.all([
     env.DB.prepare(`SELECT * FROM articles WHERE status='breaking' AND published_at IS NOT NULL ORDER BY published_at DESC LIMIT 10`).all(),
     env.DB.prepare(`SELECT * FROM articles WHERE ${publishedWhere()} ORDER BY CASE WHEN status='breaking' THEN 0 ELSE 1 END, published_at DESC LIMIT 1`).first(),
     env.DB.prepare(`SELECT * FROM articles WHERE ${publishedWhere()} ORDER BY published_at DESC LIMIT 16`).all(),
-    env.DB.prepare(`SELECT * FROM articles WHERE ${publishedWhere()} ORDER BY views DESC, published_at DESC LIMIT 6`).all(),
     ...sectionQueries
   ]);
+  const keys = Object.keys(CATEGORY_LABELS).filter(k => k !== 'general');
+  const sections = Object.fromEntries(keys.map((k,i)=>[k, sectionsRaw[i]?.results || []]));
   return {
     configured: true,
     breaking: breaking.results || [],
     hero,
     latest: latest.results || [],
-    trending: trending.results || [],
-    sections: Object.fromEntries(sectionNames.map((name, i) => [name, sectionResults[i]?.results || []]))
+    sections
   };
 }
 
@@ -120,7 +134,7 @@ export async function listByCategory(env, category, limit = 30) {
 
 export async function searchArticles(env, q, limit = 30) {
   if (!(await ensureSchema(env))) return [];
-  const term = `%${String(q || "").trim()}%`;
+  const term = `%${normalizePersianText(String(q || "").trim())}%`;
   const r = await env.DB.prepare(`SELECT * FROM articles WHERE ${publishedWhere()} AND (title LIKE ? OR excerpt LIKE ? OR body LIKE ?) ORDER BY published_at DESC LIMIT ?`).bind(term, term, term, limit).all();
   return r.results || [];
 }
@@ -129,70 +143,91 @@ export async function adminStats(env) {
   if (!(await ensureSchema(env))) return { configured: false, total: 0, published: 0, drafts: 0, breaking: 0, views: 0 };
   const row = await env.DB.prepare(`SELECT
     COUNT(*) total,
-    SUM(CASE WHEN status='published' THEN 1 ELSE 0 END) published,
-    SUM(CASE WHEN status='draft' THEN 1 ELSE 0 END) drafts,
-    SUM(CASE WHEN status='breaking' THEN 1 ELSE 0 END) breaking,
+    COALESCE(SUM(CASE WHEN status='published' THEN 1 ELSE 0 END),0) published,
+    COALESCE(SUM(CASE WHEN status='draft' THEN 1 ELSE 0 END),0) drafts,
+    COALESCE(SUM(CASE WHEN status='breaking' THEN 1 ELSE 0 END),0) breaking,
     COALESCE(SUM(views),0) views
     FROM articles`).first();
   return { configured: true, ...row };
 }
 
-export async function adminArticles(env, limit = 100) {
+export async function adminArticles(env, limit = 120) {
   if (!(await ensureSchema(env))) return [];
   const r = await env.DB.prepare(`SELECT * FROM articles ORDER BY created_at DESC LIMIT ?`).bind(limit).all();
   return r.results || [];
 }
 
+function cleanArticleInput(input, current = null) {
+  const title = smartTitle(input.title ?? current?.title ?? '');
+  const body = smartBody(input.body ?? current?.body ?? '');
+  const chosenCategory = input.category && CATEGORY_LABELS[input.category] ? input.category : (current?.category || 'general');
+  const category = chosenCategory === 'general' ? inferCategory(title, body) : chosenCategory;
+  const excerptInput = normalizePersianText(input.excerpt ?? current?.excerpt ?? '');
+  const excerpt = excerptInput || autoExcerpt(body, title);
+  const status = ["draft", "published", "breaking"].includes(input.status) ? input.status : (current?.status || "draft");
+  return {
+    title,
+    body,
+    excerpt,
+    category: CATEGORY_LABELS[category] ? category : 'general',
+    status,
+    hero_image: String(input.hero_image ?? current?.hero_image ?? '').trim(),
+    source_name: normalizePersianText(input.source_name ?? current?.source_name ?? ''),
+    source_url: String(input.source_url ?? current?.source_url ?? '').trim()
+  };
+}
+
 export async function createArticle(env, input) {
   await ensureSchema(env);
-  const title = String(input.title || "").trim();
-  if (!title) throw new Error("عنوان خبر الزامی است");
-  const slug = makeSlug(input.slug || title);
-  const status = ["draft", "published", "breaking"].includes(input.status) ? input.status : "draft";
-  const publishedAt = status === "draft" ? null : (input.published_at || new Date().toISOString());
+  const clean = cleanArticleInput(input);
+  if (!clean.title) throw new Error("عنوان خبر الزامی است");
+  if (!clean.body) throw new Error("متن خبر الزامی است");
+  const slug = await uniqueSlug(env, input.slug || clean.title);
+  const publishedAt = clean.status === "draft" ? null : (input.published_at || new Date().toISOString());
   const result = await env.DB.prepare(`INSERT INTO articles
     (slug,title,excerpt,body,category,status,hero_image,source_name,source_url,published_at,updated_at)
     VALUES (?,?,?,?,?,?,?,?,?,?,CURRENT_TIMESTAMP)`)
     .bind(
       slug,
-      title,
-      String(input.excerpt || "").trim(),
-      String(input.body || "").trim(),
-      CATEGORY_LABELS[input.category] ? input.category : "general",
-      status,
-      String(input.hero_image || "").trim(),
-      String(input.source_name || "").trim(),
-      String(input.source_url || "").trim(),
+      clean.title,
+      clean.excerpt,
+      clean.body,
+      clean.category,
+      clean.status,
+      clean.hero_image,
+      clean.source_name,
+      clean.source_url,
       publishedAt
     ).run();
-  return { id: result.meta.last_row_id, slug };
+  return { id: result.meta.last_row_id, slug, category: clean.category, excerpt: clean.excerpt };
 }
 
 export async function updateArticle(env, id, input) {
   await ensureSchema(env);
   const current = await env.DB.prepare(`SELECT * FROM articles WHERE id=?`).bind(id).first();
   if (!current) throw new Error("خبر پیدا نشد");
-  const title = String(input.title ?? current.title).trim();
-  const status = ["draft", "published", "breaking"].includes(input.status) ? input.status : current.status;
-  const publishedAt = status === "draft" ? null : (input.published_at || current.published_at || new Date().toISOString());
-  const slug = makeSlug(input.slug || current.slug || title);
+  const clean = cleanArticleInput(input, current);
+  if (!clean.title) throw new Error("عنوان خبر الزامی است");
+  if (!clean.body) throw new Error("متن خبر الزامی است");
+  const publishedAt = clean.status === "draft" ? null : (input.published_at || current.published_at || new Date().toISOString());
+  const slug = await uniqueSlug(env, input.slug || current.slug || clean.title, id);
   await env.DB.prepare(`UPDATE articles SET
     slug=?, title=?, excerpt=?, body=?, category=?, status=?, hero_image=?, source_name=?, source_url=?, published_at=?, updated_at=CURRENT_TIMESTAMP
     WHERE id=?`)
     .bind(
       slug,
-      title,
-      String(input.excerpt ?? current.excerpt),
-      String(input.body ?? current.body),
-      CATEGORY_LABELS[input.category] ? input.category : current.category,
-      status,
-      String(input.hero_image ?? current.hero_image),
-      String(input.source_name ?? current.source_name),
-      String(input.source_url ?? current.source_url),
+      clean.title,
+      clean.excerpt,
+      clean.body,
+      clean.category,
+      clean.status,
+      clean.hero_image,
+      clean.source_name,
+      clean.source_url,
       publishedAt,
       id
     ).run();
-  return { id, slug };
+  return { id, slug, category: clean.category, excerpt: clean.excerpt };
 }
 
 export async function deleteArticle(env, id) {

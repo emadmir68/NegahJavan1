@@ -4,8 +4,9 @@ import { editorialPage } from './ui.js';
 import { homePage, articlePage, listingPage, notFoundPage } from './ui-public.js';
 import { vazirmatnBase64 } from './font.js';
 import { coverSvg as renderCoverSvg } from './cover.js';
+import { coverImages } from './cover-images.js';
 import { wordmarkSvg, wordmarkSvgV1, monogramSvg } from './brand-identity.js';
-import { MEDIA_PATH, MediaInputError, mediaUrl, mediaSettings, saveMediaSettings, uploadMedia, serveMedia, validateArticleMedia } from './media-storage.js';
+import { MEDIA_PATH, MediaInputError, mediaUrl, mediaSettings, saveMediaSettings, uploadMedia, serveMedia, validateArticleMedia, attachMediaRenditions } from './media-storage.js';
 
 const html = (body, status=200) => new Response(body, { status, headers: { 'Content-Type':'text/html; charset=utf-8', 'Cache-Control':'no-store', 'X-Content-Type-Options':'nosniff', 'Referrer-Policy':'strict-origin-when-cross-origin' } });
 const json = (data, status=200, headers={}) => new Response(JSON.stringify(data), { status, headers: { 'Content-Type':'application/json; charset=utf-8', 'Cache-Control':'no-store', 'X-Content-Type-Options':'nosniff', ...headers } });
@@ -100,6 +101,13 @@ export default {
     const path = url.pathname;
 
     try {
+      const rasterCover = path.match(/^\/assets\/cover-([a-z]+)-([0-2])-v2\.png$/);
+      if (rasterCover && ['GET','HEAD'].includes(request.method)) {
+        const encoded = coverImages[rasterCover[1]]?.[Number(rasterCover[2])];
+        if (!encoded) return new Response('Not found',{status:404});
+        const data = request.method === 'HEAD' ? null : Uint8Array.from(atob(encoded), letter => letter.charCodeAt(0));
+        return new Response(data,{headers:{'Content-Type':'image/png','Cache-Control':'public, max-age=31536000, immutable','X-Content-Type-Options':'nosniff'}});
+      }
       if (['/assets/negahjavan-wordmark-v1.svg', '/assets/negahjavan-wordmark-v2.svg', '/assets/negahjavan-mark-v1.svg'].includes(path) && ['GET', 'HEAD'].includes(request.method)) {
         const image = path.endsWith('wordmark-v2.svg') ? wordmarkSvg : path.endsWith('wordmark-v1.svg') ? wordmarkSvgV1 : monogramSvg;
         return new Response(request.method === 'HEAD' ? null : image, { headers: { 'Content-Type':'image/svg+xml; charset=utf-8', 'Cache-Control':'public, max-age=31536000, immutable', 'X-Content-Type-Options':'nosniff' } });
@@ -140,6 +148,13 @@ export default {
         if (path === '/api/admin/media' && request.method === 'POST') return json({ok:true,media:await uploadMedia(request,env)},201);
         if (path === '/api/admin/media-settings' && request.method === 'PUT') return json({ok:true,media:await saveMediaSettings(env,await bodyJson(request))});
         return json({error:'روش درخواست نامعتبر است'},405);
+      }
+
+      if (path === '/api/admin/media-renditions' && request.method === 'PUT') {
+        if (!secureWriteRequest(request)) return json({error:'Origin نامعتبر است'},403);
+        if (!(await requireEditor(request,env))) return json({error:'نیاز به ورود دارید'},401);
+        if (!hasDatabase(env)) return json({error:'دیتابیس در دسترس نیست'},503);
+        return json({ok:true,media:await attachMediaRenditions(env,await bodyJson(request))});
       }
 
       const mediaMatch=path.match(MEDIA_PATH);

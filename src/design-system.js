@@ -50,6 +50,7 @@ export const publicScript = `
     const showError = () => { card.classList.remove('is-playing'); button.hidden = true; errorNotice.hidden = false; };
     button.hidden = false;
     button.addEventListener('click', () => {
+      video.dataset.playRequested = 'true';
       errorNotice.hidden = true;
       video.focus({preventScroll:true});
       video.play().catch(error => { if (error.name !== 'AbortError') showError(); });

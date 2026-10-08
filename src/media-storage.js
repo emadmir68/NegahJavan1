@@ -277,6 +277,33 @@ export async function validateArticleMedia(env, input) {
   return input;
 }
 
+export async function attachMediaRenditions(env, input = {}) {
+  await ensureSchema(env);
+  const originalMatch = String(input.original || '').match(MEDIA_PATH);
+  if (!originalMatch) throw new MediaInputError('فایل اصلی فیلم معتبر نیست.');
+  const key = 'media_file:' + originalMatch[1];
+  const row = await env.DB.prepare('SELECT value FROM site_settings WHERE key=?').bind(key).first();
+  let original;
+  try { original = JSON.parse(row?.value || '{}'); } catch { original = {}; }
+  if (original.kind !== 'video' || !TYPES[original.mime] || !original.key?.startsWith('negahjavan/')) throw new MediaInputError('فایل اصلی فیلم پیدا نشد.');
+  const variants = {...original.variants};
+  let count = 0;
+  for (const [format, mime] of [['mp4','video/mp4'], ['webm','video/webm']]) {
+    if (!Object.hasOwn(input, format)) continue;
+    const match = String(input[format] || '').match(MEDIA_PATH);
+    if (!match || match[1] === originalMatch[1]) throw new MediaInputError('نسخهٔ جایگزین فیلم معتبر نیست.');
+    const variantRow = await env.DB.prepare('SELECT value FROM site_settings WHERE key=?').bind('media_file:' + match[1]).first();
+    let variant;
+    try { variant = JSON.parse(variantRow?.value || '{}'); } catch { variant = {}; }
+    if (variant.kind !== 'video' || variant.mime !== mime || !variant.key?.startsWith('negahjavan/')) throw new MediaInputError('فرمت نسخهٔ جایگزین فیلم معتبر نیست.');
+    variants[format] = match[1];
+    count++;
+  }
+  if (!count) throw new MediaInputError('حداقل یک نسخهٔ جایگزین فیلم لازم است.');
+  await env.DB.prepare('INSERT INTO site_settings(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value').bind(key,JSON.stringify({...original, variants})).run();
+  return {url:input.original,formats:Object.keys(variants)};
+}
+
 export async function serveMedia(request, env, id, authenticated=false) {
   if (!(await ensureSchema(env))) return new Response('Not found',{status:404});
   const row=await env.DB.prepare('SELECT value FROM site_settings WHERE key=?').bind('media_file:'+id).first();
@@ -286,6 +313,20 @@ export async function serveMedia(request, env, id, authenticated=false) {
   const path='/media/'+id;
   const published=await env.DB.prepare(`SELECT a.id FROM articles a LEFT JOIN site_settings m ON m.key='article_meta:'||a.id WHERE a.status IN ('published','breaking') AND a.published_at IS NOT NULL AND (a.hero_image=? OR (json_valid(m.value) AND json_extract(m.value,'$.video_url')=?)) LIMIT 1`).bind(path,path).first();
   if (!published && !authenticated) return new Response('Not found',{status:404,headers:{'Cache-Control':'no-store'}});
+  const format = new URL(request.url).searchParams.get('format');
+  if (format && !['mp4','webm','original'].includes(format)) return new Response('Invalid format',{status:400,headers:{'Cache-Control':'no-store'}});
+  const preferred = format === 'original' ? '' : format || (file.mime === 'video/mp4' ? 'mp4' : '');
+  if (preferred && file.variants?.[preferred]) {
+    const variantId = file.variants[preferred];
+    if (!MEDIA_PATH.test('/media/' + variantId)) return new Response('Not found',{status:404});
+    const variantRow = await env.DB.prepare('SELECT value FROM site_settings WHERE key=?').bind('media_file:' + variantId).first();
+    let variant;
+    try { variant = JSON.parse(variantRow?.value || '{}'); } catch { variant = {}; }
+    if (variant.kind !== 'video' || variant.mime !== 'video/' + preferred || !variant.key?.startsWith('negahjavan/')) return new Response('Not found',{status:404});
+    file = variant;
+  } else if (format && format !== 'original' && file.mime !== 'video/' + format) {
+    return new Response('Not found',{status:404,headers:{'Cache-Control':'no-store'}});
+  }
   const config=await readConfig(env);
   if (!config) return new Response('Media unavailable',{status:503,headers:{'Cache-Control':'no-store'}});
   const outgoing={}, range=request.headers.get('Range');
@@ -295,7 +336,7 @@ export async function serveMedia(request, env, id, authenticated=false) {
   }
   const response=await storageFetch(config,request.method,file.key,outgoing);
   if (![200,206,304,416].includes(response.status)) { await response.body?.cancel().catch(()=>{});return new Response('Media unavailable',{status:response.status===404 ? 404 : 502,headers:{'Cache-Control':'no-store'}}); }
-  const headers=new Headers({'Content-Type':file.mime,'X-Content-Type-Options':'nosniff','Cache-Control':published?'public, max-age=60':'private, no-store','Cross-Origin-Resource-Policy':'same-origin'});
-  for(const name of ['Content-Length','Content-Range','Accept-Ranges','ETag','Last-Modified']) if(response.headers.has(name))headers.set(name,response.headers.get(name));
+  const headers=new Headers({'Content-Type':file.mime,'Accept-Ranges':'bytes','X-Content-Type-Options':'nosniff','Cache-Control':published?'public, max-age=60':'private, no-store','Cross-Origin-Resource-Policy':'same-origin'});
+  for(const name of ['Content-Length','Content-Range','ETag','Last-Modified']) if(response.headers.has(name))headers.set(name,response.headers.get(name));
   return new Response(request.method==='HEAD'?null:response.body,{status:response.status,headers});
 }

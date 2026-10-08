@@ -29,7 +29,7 @@ function illustration(key, accent, soft) {
   return scenes[key] || scenes.general;
 }
 
-function titleVariant(title) {
+export function coverVariant(title) {
   let hash = 2166136261;
   for (const character of String(title).normalize('NFC')) hash = Math.imul(hash ^ character.codePointAt(0),16777619) >>> 0;
   return hash % 3;
@@ -38,7 +38,7 @@ function titleVariant(title) {
 export function coverSvg(category = 'general', title = '') {
   const key = palettes[category] ? category : 'general';
   const [paper,soft,accent] = palettes[key];
-  const variant = titleVariant(title);
+  const variant = coverVariant(title);
   const sceneX = [210,165,240][variant];
   const angle = [-3,2,5][variant];
   return `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="675" viewBox="0 0 1200 675" role="img" fill="none"><title>${xml(title || labels[key])}</title><defs>

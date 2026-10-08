@@ -6,10 +6,11 @@
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
-    "check": "node --check src/worker.js && node --check src/auth.js && node --check src/db.js && node --check src/smart.js && node --check src/cover.js && node --check src/ui.js && node --check src/ui-public.js && node --check src/design-system.js && node --check src/design-art.js && node --check src/font.js && node --check src/theme-premium.js && node --check src/brand-identity.js && node --check src/magazine-design.js && node --check src/edition-editor.js && node --check src/media-storage.js && node --check src/media-editor.js && node --check src/media-layout.js",
+    "check": "node --check src/worker.js && node --check src/auth.js && node --check src/db.js && node --check src/smart.js && node --check src/cover.js && node --check src/ui.js && node --check src/ui-public.js && node --check src/design-system.js && node --check src/design-art.js && node --check src/font.js && node --check src/theme-premium.js && node --check src/brand-identity.js && node --check src/magazine-design.js && node --check src/edition-editor.js && node --check src/media-storage.js && node --check src/media-editor.js && node --check src/media-layout.js && node --check src/editor-ai.js && node --check src/seo.js && node --check src/image-tools.js && node --check src/editor-enhancements.js",
     "test": "node --test tests/*.test.js"
   },
   "devDependencies": {
     "wrangler": "^4.45.0"
   }
 }
+

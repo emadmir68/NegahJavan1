@@ -30,14 +30,15 @@ test('published video stories play on home and archive cards without navigating 
   const second={...first,title:'فیلم دوم',slug:'second-video',hero_image:'https://images.example/poster.png',video_url:'https://videos.example/clip.webm',video_type:'video/webm'};
   const page=homePage({latest:[first,second],editorPicks:[first]});
   const lead=page.match(/<article class="frontpage-lead">([\s\S]*?)<div class="frontpage-lead-copy">/)[1];
-  assert.match(lead, /^<div class="media-link frontpage-photo story-video">/);
-  assert.match(lead, /<video[^>]+controls playsinline preload="none"[^>]+data-card-video/);
-  assert.match(lead, /poster="\/cover\/first-video\.svg/);
+  assert.match(lead, /^<div class="media-link frontpage-photo story-video" data-news-frame>/);
+  assert.match(lead, /<video[^>]+controls playsinline preload="metadata"[^>]+data-card-video data-video-preview/);
+  assert.doesNotMatch(lead, /poster="\/cover\//);
+  assert.match(lead, /data-video-backdrop aria-hidden="true" hidden/);
   assert.match(lead, /<source src="\/media\/[^"]+\.mp4" type="video\/mp4">/);
   assert.match(lead, /aria-label="پخش ویدئوی خبر: فیلم نخست"/);
   assert.doesNotMatch(lead, /autoplay|aria-hidden="true"[^>]*><video|<a[^>]+class="media-link/);
   const archive=listingPage('تازه‌ترین خبرها',[first,second]);
-  assert.equal((archive.match(/data-card-video>/g)||[]).length,2);
+  assert.equal((archive.match(/data-card-video data-video-preview>/g)||[]).length,2);
   assert.match(archive, /poster="https:\/\/images\.example\/poster\.png"/);
   assert.match(archive, /<source src="https:\/\/videos\.example\/clip\.webm" type="video\/webm">/);
   assert.match(archive, /<h3><a href="\/news\/first-video">فیلم نخست<\/a><\/h3>/);
@@ -47,13 +48,29 @@ test('published video stories play on home and archive cards without navigating 
 test('card videos preserve photo-only stories and reject unsafe video URLs and attributes', () => {
   const base={title:'خبر',slug:'story',category:'technology',body:'متن خبر.',hero_image:'https://images.example/photo.png'};
   const photo=listingPage('تازه‌ترین خبرها',[base]);
-  assert.match(photo, /<a class="media-link" href="\/news\/story"[^>]*><img/);
+  assert.match(photo, /<a class="media-link" data-news-frame href="\/news\/story"[^>]*><img/);
   assert.doesNotMatch(photo, /<video\b|data-card-play hidden/);
   const unsafe=listingPage('تازه‌ترین خبرها',[{...base,video_url:'javascript:alert(1)'}]);
   assert.doesNotMatch(unsafe, /<video\b|src="javascript:/);
   const escaped=listingPage('تازه‌ترین خبرها',[{...base,title:'" onfocus="alert(1)',video_url:'https://videos.example/clip.mp4',hero_image:'javascript:alert(1)'}]);
   assert.match(escaped, /aria-label="ویدئوی خبر: &quot; onfocus=&quot;alert\(1\)"/);
   assert.doesNotMatch(escaped, /aria-label="" onfocus|poster="javascript:/);
+});
+
+test('video readers show one playable media frame instead of a duplicate graphic or photo cover', () => {
+  const video={title:'فیلم خبر',slug:'video-reader',category:'society',body:'متن روایت.',video_url:'https://videos.example/story.mp4',video_type:'video/mp4'};
+  for (const article of [video,{...video,hero_image:'https://images.example/poster.jpg'}]) {
+    const page=articlePage(article);
+    const main=page.match(/<main[\s\S]*?<\/main>/)[0];
+    assert.equal((main.match(/<video\b/g)||[]).length,1);
+    assert.doesNotMatch(main, /class="article-cover|تصویر گرافیکی تحریریه/);
+    assert.ok(main.indexOf('<video') < main.indexOf('data-reader-body'));
+    assert.match(main,/data-news-frame/);
+    assert.match(main,/aria-label="ویدئوی خبر: فیلم خبر"/);
+  }
+  const photo=articlePage({...video,video_url:'',hero_image:'https://images.example/photo.jpg'});
+  assert.match(photo,/class="media-link article-cover-frame" data-news-frame><img/);
+  assert.doesNotMatch(photo,/<video\b/);
 });
 
 test('public font and latest news routes work without editorial authentication', async () => {

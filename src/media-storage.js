@@ -12,7 +12,71 @@ const TYPES = {
   'video/webm': { extension:'webm', kind:'video', max:50 * 1024 * 1024 },
 };
 export class MediaInputError extends Error {
-  constructor(message, status=400) { super(message); this.status=status; }
+  constructor(message, status=400, code) { super(message); this.status=status; this.code=code; }
+}
+
+function storageNetworkError(error, timedOut=false) {
+  const detail = String(error?.cause?.code || '')+' '+String(error?.message || '');
+  const [code,message] = timedOut || /timeout|timed out|ETIMEDOUT/i.test(detail)
+    ? ['STORAGE_TIMEOUT','زمان پاسخ‌گویی فضای ابری تمام شد؛ ارتباط Cloudflare با آروان را بررسی کنید.']
+    : /ENOTFOUND|EAI_AGAIN|DNS|name resolution/i.test(detail)
+    ? ['STORAGE_DNS','نشانی Endpoint از سرور سایت قابل پیدا کردن نیست؛ نشانی فعال همان منطقه را از پنل آروان کپی کنید.']
+    : /TLS|SSL|certificate|CERT_/i.test(detail)
+    ? ['STORAGE_TLS','ارتباط امن سرور سایت با Endpoint آروان برقرار نشد.']
+    : /ECONNRESET|connection (?:lost|reset|closed)|socket hang up/i.test(detail)
+    ? ['STORAGE_CONNECTION_RESET','ارتباط سرور سایت با آروان هنگام ارسال درخواست قطع شد.']
+    : ['STORAGE_NETWORK','درخواست سرور سایت به آروان نرسید؛ دسترسی شبکه یا Endpoint را بررسی کنید.'];
+  return new MediaInputError(message+' ('+code+')',502,code);
+}
+
+async function storageResponseError(response, operation) {
+  let body = '';
+  const reader = response.body?.getReader();
+  if (reader) {
+    const decoder = new TextDecoder();
+    let remaining = 8192;
+    try {
+      while (remaining > 0) {
+        const chunk = await reader.read();
+        if (chunk.done) break;
+        const bytes = chunk.value.subarray(0,remaining);
+        remaining -= bytes.length;
+        body += decoder.decode(bytes,{stream:true});
+      }
+      body += decoder.decode();
+    } catch {} finally { await reader.cancel().catch(()=>{}); }
+  }
+  const serviceCode = body.match(/<Code>\s*([A-Za-z0-9]{1,64})\s*<\/Code>/)?.[1];
+  let code, message;
+  if (response.status >= 300 && response.status < 400 || ['PermanentRedirect','TemporaryRedirect','IncorrectEndpoint','AuthorizationHeaderMalformed','InvalidRegion'].includes(serviceCode)) {
+    code='STORAGE_ENDPOINT_REGION';
+    message='آروان نشانی یا منطقه امضای درخواست را نپذیرفت؛ Endpoint و Region فعال همان منطقه را بررسی کنید.';
+  } else if (serviceCode === 'InvalidAccessKeyId') {
+    code='STORAGE_ACCESS_KEY';
+    message='آروان کلید دسترسی را نمی‌شناسد؛ Access Key کاربر موقت انتخاب‌شده را وارد کنید.';
+  } else if (serviceCode === 'SignatureDoesNotMatch') {
+    code='STORAGE_SIGNATURE';
+    message='امضای درخواست با آروان همخوانی ندارد؛ دو کلید متعلق به همان کاربر و Region را بررسی کنید.';
+  } else if (['ExpiredToken','InvalidToken','TokenRefreshRequired'].includes(serviceCode)) {
+    code='STORAGE_EXPIRED_KEY';
+    message='اعتبار کلید موقت تمام شده یا پذیرفته نشد؛ اعتبار همان کاربر موقت را بررسی کنید.';
+  } else if (serviceCode === 'RequestTimeTooSkewed') {
+    code='STORAGE_CLOCK';
+    message='زمان سرور سایت و آروان همخوانی ندارد.';
+  } else if (serviceCode === 'NoSuchBucket' || response.status === 404) {
+    code='STORAGE_BUCKET';
+    message='صندوقچه در Endpoint انتخاب‌شده پیدا نشد؛ نام صندوقچه و منطقه را بررسی کنید.';
+  } else if (serviceCode === 'AccessDenied' || response.status === 403) {
+    code='STORAGE_PERMISSION';
+    message='آروان دسترسی درخواست '+operation+' را رد کرد؛ کلیدهای کاربر موقت و پالیسی همین صندوقچه را بررسی کنید.';
+  } else if (response.status >= 500) {
+    code='STORAGE_SERVICE';
+    message='سرویس آروان هنگام بررسی اتصال پاسخ خطا داد؛ دوباره تلاش کنید.';
+  } else {
+    code='STORAGE_RESPONSE';
+    message='پاسخ بررسی اتصال فضای ابری پذیرفته نشد.';
+  }
+  return new MediaInputError(message+' ('+code+'؛ HTTP '+response.status+')',response.status>=500 ? 502 : 400,code);
 }
 
 export function mediaUrl(value) {
@@ -72,9 +136,11 @@ export async function mediaSettings(env) {
 }
 
 // SigV4 uses the official S3 canonical request, with UNSIGNED-PAYLOAD over HTTPS.
-export async function signedStorageRequest(config, method, objectKey='', extraHeaders={}, now=new Date()) {
+export async function signedStorageRequest(config, method, objectKey='', extraHeaders={}, now=new Date(), query={}) {
+  const encode = value => encodeURIComponent(value).replace(/[!'()*]/g, c => '%'+c.charCodeAt(0).toString(16).toUpperCase());
   const uri = '/' + [config.bucket,...objectKey.split('/').filter(Boolean)].map(part => encodeURIComponent(part).replace(/[!'()*]/g, c => '%'+c.charCodeAt(0).toString(16).toUpperCase())).join('/');
-  const url = config.endpoint + uri;
+  const canonicalQuery = Object.entries(query).map(([name,value])=>[encode(name),encode(String(value))]).sort(([a,av],[b,bv])=>a<b ? -1 : a>b ? 1 : av<bv ? -1 : av>bv ? 1 : 0).map(([name,value])=>name+'='+value).join('&');
+  const url = config.endpoint + uri + (canonicalQuery ? '?'+canonicalQuery : '');
   const date = now.toISOString().replace(/[:-]|\.\d{3}/g,'');
   const shortDate = date.slice(0,8), scope = `${shortDate}/${config.region}/s3/aws4_request`;
   const headers = new Headers(extraHeaders);
@@ -83,7 +149,7 @@ export async function signedStorageRequest(config, method, objectKey='', extraHe
   const canonicalHeaders = new Map([...headers].filter(([name])=>name !== 'content-length').map(([name,value])=>[name,value.trim().replace(/\s+/g,' ')]));
   canonicalHeaders.set('host',new URL(config.endpoint).host);
   const names = [...canonicalHeaders.keys()].sort();
-  const canonical = [method,uri,'',names.map(name=>`${name}:${canonicalHeaders.get(name)}\n`).join(''),names.join(';'),'UNSIGNED-PAYLOAD'].join('\n');
+  const canonical = [method,uri,canonicalQuery,names.map(name=>`${name}:${canonicalHeaders.get(name)}\n`).join(''),names.join(';'),'UNSIGNED-PAYLOAD'].join('\n');
   const toSign = ['AWS4-HMAC-SHA256',date,scope,hex(await digest(canonical))].join('\n');
   const dateKey = await hmac('AWS4'+config.secretKey,shortDate);
   const regionKey = await hmac(dateKey,config.region), serviceKey = await hmac(regionKey,'s3');
@@ -92,11 +158,15 @@ export async function signedStorageRequest(config, method, objectKey='', extraHe
   return {url,headers};
 }
 
-async function storageFetch(config, method, key='', headers={}, body) {
-  const signed = await signedStorageRequest(config,method,key,headers);
+async function storageFetch(config, method, key='', headers={}, body, query={}) {
+  const signed = await signedStorageRequest(config,method,key,headers,new Date(),query);
+  const controller = ['GET','HEAD'].includes(method) ? new AbortController() : null;
+  const timer = controller ? setTimeout(()=>controller.abort(),20000) : null;
   try {
-    return await fetch(signed.url,{method,headers:signed.headers,body,redirect:'error',...(body ? {duplex:'half'} : {})});
-  } catch { throw new MediaInputError('ارتباط با فضای ابری برقرار نشد؛ دوباره تلاش کنید.',502); }
+    // Inspect redirects without forwarding storage credentials to another host.
+    return await fetch(signed.url,{method,headers:signed.headers,body,redirect:'manual',...(controller ? {signal:controller.signal} : {}),...(body ? {duplex:'half'} : {})});
+  } catch (error) { throw storageNetworkError(error,controller?.signal.aborted); }
+  finally { if (timer !== null) clearTimeout(timer); }
 }
 
 export async function saveMediaSettings(env, input) {
@@ -113,8 +183,11 @@ export async function saveMediaSettings(env, input) {
     }
     if (!previous || previous.endpoint !== config.endpoint || previous.bucket !== config.bucket) throw new MediaInputError('برای حفظ فایل‌های قبلی، نشانی و نام فضای ابری را تغییر ندهید. کلیدها قابل به‌روزرسانی هستند.',409);
   }
-  const check = await storageFetch(config,'HEAD');
-  if (!check.ok) throw new MediaInputError('اتصال تأیید نشد؛ نام فضا، منطقه، کلیدها و مجوز خواندن و نوشتن را بررسی کنید.',400);
+  // ListBucket provides the S3 error code that a failed HEAD request omits.
+  // No file contents or object names are requested during this check.
+  const check = await storageFetch(config,'GET','',{},undefined,{'list-type':'2','max-keys':'0'});
+  if (!check.ok) throw await storageResponseError(check,'ListBucket');
+  await check.body?.cancel().catch(()=>{});
   const iv = crypto.getRandomValues(new Uint8Array(12));
   const ciphertext = await crypto.subtle.encrypt({name:'AES-GCM',iv,additionalData:encoder.encode(CONFIG_KEY)},await encryptionKey(env),encoder.encode(JSON.stringify(config)));
   const sealed = JSON.stringify({version:1,endpoint:config.endpoint,bucket:config.bucket,region:config.region,iv:base64(iv),ciphertext:base64(ciphertext)});
@@ -176,7 +249,7 @@ export async function uploadMedia(request, env) {
   const stream = await validatedStream(request,mime,size);
   const id = crypto.randomUUID()+'.'+type.extension, key='negahjavan/'+type.kind+'/'+id;
   const response = await storageFetch(config,'PUT',key,{'Content-Type':mime,'Content-Length':String(size)},stream);
-  if (!response.ok) throw new MediaInputError('فایل در فضای ابری ذخیره نشد؛ اتصال و مجوز نوشتن را بررسی کنید.',502);
+  if (!response.ok) throw await storageResponseError(response,'PutObject');
   await response.body?.cancel().catch(()=>{});
   let name;
   try { name=decodeURIComponent(request.headers.get('X-File-Name')||''); } catch { name=''; }

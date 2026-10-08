@@ -233,7 +233,7 @@ export default {
 
       return html(notFoundPage(), 404);
     } catch (error) {
-      if (error instanceof MediaInputError) return path.startsWith('/api/') ? json({error:error.message},error.status) : new Response('Media unavailable',{status:error.status,headers:{'Cache-Control':'no-store'}});
+      if (error instanceof MediaInputError) return path.startsWith('/api/') ? json({error:error.message,...(error.code ? {code:error.code} : {})},error.status) : new Response('Media unavailable',{status:error.status,headers:{'Cache-Control':'no-store'}});
       console.error('NegahJavan error', error);
       if (path.startsWith('/api/')) return json({ error:error?.message || 'خطای داخلی سرور' }, 500);
       return html(`<!doctype html><meta charset="utf-8"><body dir="rtl" style="font-family:Tahoma;background:#07101a;color:white;padding:40px"><h1>خطای موقت</h1><p>سرویس با خطا روبه‌رو شد. لطفاً دوباره تلاش کنید.</p></body>`, 500);

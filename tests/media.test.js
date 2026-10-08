@@ -8,6 +8,24 @@ import { createSession, sessionCookie } from '../src/auth.js';
 import { articlePage } from '../src/ui-public.js';
 import { signedStorageRequest } from '../src/media-storage.js';
 
+function mediaTestEnv() {
+  const sqlite=new DatabaseSync(':memory:');
+  // Each fixture has its own settings table even after db.js caches schema setup.
+  sqlite.exec("CREATE TABLE site_settings (key TEXT PRIMARY KEY,value TEXT NOT NULL DEFAULT '',updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)");
+  const env={ADMIN_PASSWORD:randomUUID(),AUTH_SECRET:randomUUID(),DB:{
+    prepare(sql){
+      let values=[];
+      return {
+        bind(...args){values=args;return this},
+        async run(){const r=sqlite.prepare(sql).run(...values);return {meta:{last_row_id:Number(r.lastInsertRowid)}}},
+        async first(){return sqlite.prepare(sql).get(...values)||null},
+        async all(){return {results:sqlite.prepare(sql).all(...values)}},
+      };
+    },
+  }};
+  return {sqlite,env};
+}
+
 test('short news does not repeat its full text or display a same-minute update',()=>{
   const body='💬فرماندار جیرفت از تلاش‌های شبانه‌روزی راهداران قدردانی کرد.';
   const article={title:'تجلیل از خادمان ایمنی راه‌ها',slug:'short',category:'society',excerpt:body,body,published_at:'2026-10-07T17:53:01.000Z',updated_at:'2026-10-07 17:53:42'};
@@ -34,18 +52,7 @@ test('S3 requests sign the canonical path and headers with a reproducible signat
 });
 
 test('authenticated Arvan uploads stream files, keep keys private and restrict draft media',async()=>{
-  const sqlite=new DatabaseSync(':memory:');
-  const env={ADMIN_PASSWORD:randomUUID(),AUTH_SECRET:randomUUID(),DB:{
-    prepare(sql){
-      let values=[];
-      return {
-        bind(...args){values=args;return this},
-        async run(){const r=sqlite.prepare(sql).run(...values);return {meta:{last_row_id:Number(r.lastInsertRowid)}}},
-        async first(){return sqlite.prepare(sql).get(...values)||null},
-        async all(){return {results:sqlite.prepare(sql).all(...values)}},
-      };
-    },
-  }};
+  const {sqlite,env}=mediaTestEnv();
   const originalFetch=globalThis.fetch,files=new Map(),calls=[];
   const settings={endpoint:'https://test.arvanstorage.ir',bucket:'negahjavan-media',region:'test-region',access_key:'TESTACCESSKEY',secret_key:'test-only-private-storage-key'};
   const png=Uint8Array.from([137,80,78,71,13,10,26,10,...new Array(24).fill(0)]);
@@ -59,9 +66,12 @@ test('authenticated Arvan uploads stream files, keep keys private and restrict d
     globalThis.fetch=async(url,options)=>{
       assert.equal(new URL(url).host,'test.arvanstorage.ir');
       assert.match(options.headers.get('authorization'),/^AWS4-HMAC-SHA256 Credential=TESTACCESSKEY\//);
-      assert.equal(options.redirect,'error');
+      assert.equal(options.redirect,'manual');
       const path=new URL(url).pathname;calls.push({path,method:options.method,range:options.headers.get('range')});
-      if(options.method==='HEAD'&&path==='/negahjavan-media')return new Response(null,{status:200});
+      if(options.method==='GET'&&path==='/negahjavan-media'){
+        assert.equal(new URL(url).search,'?list-type=2&max-keys=0');
+        return new Response('<ListBucketResult><KeyCount>0</KeyCount></ListBucketResult>',{status:200});
+      }
       if(options.method==='PUT'){assert.ok(options.body instanceof ReadableStream);files.set(path,new Uint8Array(await new Response(options.body).arrayBuffer()));return new Response(null,{status:200})}
       const bytes=files.get(path);
       if(!bytes)return new Response(null,{status:404});
@@ -108,4 +118,62 @@ test('authenticated Arvan uploads stream files, keep keys private and restrict d
     assert.equal((await getArticle(env,draft.slug,false)).video_url,video.url);
     assert.ok(calls.every(call=>call.path.startsWith('/negahjavan-media')));
   }finally{globalThis.fetch=originalFetch;sqlite.close()}
+});
+
+test('connection query parameters are encoded, sorted and included in the S3 signature',async()=>{
+  const config={endpoint:'https://test.arvanstorage.ir',bucket:'negahjavan-media',region:'ir-central1',accessKey:'TESTACCESSKEY',secretKey:'test-only-signing-key'};
+  const result=await signedStorageRequest(config,'GET','',{},new Date('2026-10-08T06:00:00Z'),{'max-keys':'0',prefix:'a b/+', 'list-type':'2'});
+  const query='list-type=2&max-keys=0&prefix=a%20b%2F%2B';
+  assert.equal(new URL(result.url).search,'?'+query);
+  const canonical='GET\n/negahjavan-media\n'+query+'\nhost:test.arvanstorage.ir\nx-amz-content-sha256:UNSIGNED-PAYLOAD\nx-amz-date:20261008T060000Z\n\nhost;x-amz-content-sha256;x-amz-date\nUNSIGNED-PAYLOAD';
+  const hash=value=>createHash('sha256').update(value).digest('hex');
+  const hmac=(key,value)=>createHmac('sha256',key).update(value).digest();
+  const scope='20261008/ir-central1/s3/aws4_request';
+  const key=hmac(hmac(hmac(hmac('AWS4'+config.secretKey,'20261008'),'ir-central1'),'s3'),'aws4_request');
+  const signature=hmac(key,'AWS4-HMAC-SHA256\n20261008T060000Z\n'+scope+'\n'+hash(canonical)).toString('hex');
+  assert.equal(result.headers.get('authorization'),'AWS4-HMAC-SHA256 Credential=TESTACCESSKEY/'+scope+', SignedHeaders=host;x-amz-content-sha256;x-amz-date, Signature='+signature);
+});
+
+test('connection failures identify S3 and network errors without saving or disclosing keys',async t=>{
+  const settings={endpoint:'https://test.arvanstorage.ir',bucket:'negahjavan-media',region:'ir-central1',access_key:'TESTACCESSKEY',secret_key:'test-only-private-storage-key'};
+  const cases=[
+    {serviceCode:'InvalidAccessKeyId',status:403,code:'STORAGE_ACCESS_KEY'},
+    {serviceCode:'SignatureDoesNotMatch',status:403,code:'STORAGE_SIGNATURE'},
+    {serviceCode:'AccessDenied',status:403,code:'STORAGE_PERMISSION'},
+    {serviceCode:'AuthorizationHeaderMalformed',status:400,code:'STORAGE_ENDPOINT_REGION'},
+    {serviceCode:'NoSuchBucket',status:404,code:'STORAGE_BUCKET'},
+    {serviceCode:'ExpiredToken',status:400,code:'STORAGE_EXPIRED_KEY'},
+    {serviceCode:'InternalError',status:503,code:'STORAGE_SERVICE'},
+    {status:307,code:'STORAGE_ENDPOINT_REGION',location:'https://other.example/?secret='+settings.secret_key},
+    {network:'DNS lookup failed with TESTACCESSKEY test-only-private-storage-key',code:'STORAGE_DNS',existingConnection:true},
+    {network:'TLS certificate error with TESTACCESSKEY test-only-private-storage-key',code:'STORAGE_TLS'},
+    {network:'Connection reset with TESTACCESSKEY test-only-private-storage-key',code:'STORAGE_CONNECTION_RESET'},
+    {network:'Timed out with TESTACCESSKEY test-only-private-storage-key',code:'STORAGE_TIMEOUT'},
+    {network:'Failed with TESTACCESSKEY test-only-private-storage-key',code:'STORAGE_NETWORK'},
+  ];
+  for(const scenario of cases)await t.test(scenario.code+(scenario.serviceCode||scenario.status||''),async()=>{
+    const {sqlite,env}=mediaTestEnv(),originalFetch=globalThis.fetch;
+    let count=0;
+    try{
+      await ensureSchema(env);
+      if(scenario.existingConnection)sqlite.prepare('INSERT INTO site_settings(key,value) VALUES(?,?)').run('media_storage_v1','previous-sealed-connection');
+      const cookie=sessionCookie(await createSession(env)).split(';')[0];
+      globalThis.fetch=async(url,options)=>{
+        count++;
+        assert.equal(new URL(url).host,'test.arvanstorage.ir');
+        assert.equal(new URL(url).search,'?list-type=2&max-keys=0');
+        assert.equal(options.method,'GET');
+        assert.equal(options.redirect,'manual');
+        if(scenario.network)throw new TypeError(scenario.network);
+        return new Response('<Error><Code>'+scenario.serviceCode+'</Code><Message>'+settings.access_key+' '+settings.secret_key+'</Message></Error>',{status:scenario.status,headers:scenario.location?{Location:scenario.location}:{}});
+      };
+      const response=await worker.fetch(new Request('https://example.com/api/admin/media-settings',{method:'PUT',headers:{Origin:'https://example.com',Cookie:cookie,'Content-Type':'application/json'},body:JSON.stringify(settings)}),env);
+      assert.equal(response.status,scenario.network||scenario.status>=500?502:400);
+      const payload=await response.json();
+      assert.equal(payload.code,scenario.code);
+      assert.doesNotMatch(JSON.stringify(payload),/TESTACCESSKEY|test-only-private-storage-key|other\.example/);
+      assert.equal(sqlite.prepare('SELECT value FROM site_settings WHERE key=?').get('media_storage_v1')?.value,scenario.existingConnection?'previous-sealed-connection':undefined);
+      assert.equal(count,1,'storage credentials must not be sent to a redirect target');
+    }finally{globalThis.fetch=originalFetch;sqlite.close()}
+  });
 });

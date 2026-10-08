@@ -42,7 +42,7 @@ test('smart newsroom routes and automatic covers are wired', async () => {
   const db = await readFile(new URL('src/db.js', root), 'utf8');
   assert.match(worker, /\/api\/admin\/smart-preview/);
   assert.match(worker, /\/cover\\\//);
-  assert.match(ui, /اصلاح هوشمند متن/);
+  assert.match(editorialPage(), /اصلاح هوشمند متن/);
   assert.match(ui, /تشخیص هوشمند/);
   assert.match(ui, /coverPreview/);
   assert.match(db, /society/);
@@ -58,3 +58,4 @@ test('editorial browser script parses cleanly', () => {
   assert.ok(matches.length >= 1);
   for (const match of matches) new vm.Script(match[1]);
 });
+

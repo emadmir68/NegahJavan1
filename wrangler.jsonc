@@ -5,6 +5,11 @@
   "compatibility_date": "2026-10-01",
   "workers_dev": true,
   "preview_urls": false,
+  "ai": {"binding": "AI"},
+  "routes": [
+    {"pattern": "negahjavan.ir", "custom_domain": true},
+    {"pattern": "www.negahjavan.ir", "custom_domain": true}
+  ],
   "vars": {
     "SITE_NAME": "نگاه جوان"
   },
@@ -16,3 +21,4 @@
     }
   ]
 }
+

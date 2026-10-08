@@ -237,7 +237,7 @@ async function validatedStream(request, mime, size) {
   return typeof FixedLengthStream === 'function' ? stream.pipeThrough(new FixedLengthStream(size)) : stream;
 }
 
-export async function uploadMedia(request, env) {
+export async function uploadMedia(request, env, {generated = false} = {}) {
   const mime = (request.headers.get('Content-Type') || '').split(';')[0].trim().toLowerCase(), type = TYPES[mime];
   if (!type) throw new MediaInputError('عکس JPG، PNG، WebP یا GIF و فیلم MP4 یا WebM انتخاب کنید.',415);
   const length = request.headers.get('Content-Length'), reported=request.headers.get('X-Upload-Size');
@@ -253,9 +253,17 @@ export async function uploadMedia(request, env) {
   await response.body?.cancel().catch(()=>{});
   let name;
   try { name=decodeURIComponent(request.headers.get('X-File-Name')||''); } catch { name=''; }
-  const metadata = {key,kind:type.kind,mime,size,name:String(name||id).replace(/[\x00-\x1f\x7f]/g,'').slice(0,160)};
+  const metadata = {key,kind:type.kind,mime,size,name:String(name||id).replace(/[\x00-\x1f\x7f]/g,'').slice(0,160),...(generated ? {generated_by:'workers-ai'} : {})};
   await env.DB.prepare('INSERT INTO site_settings(key,value) VALUES(?,?)').bind('media_file:'+id,JSON.stringify(metadata)).run();
-  return {url:'/media/'+id,kind:type.kind,mime,size,name:metadata.name};
+  return {url:'/media/'+id,kind:type.kind,mime,size,name:metadata.name,generated};
+}
+
+export async function storeGeneratedImage(env, bytes, name = 'تصویرسازی خبر.jpg') {
+  const request = new Request('https://negahjavan.ir/api/admin/media', {
+    method:'POST', body:bytes,
+    headers:{'Content-Type':'image/jpeg','X-Upload-Size':String(bytes.byteLength),'X-File-Name':encodeURIComponent(name)},
+  });
+  return await uploadMedia(request, env, {generated:true});
 }
 
 export async function validateArticleMedia(env, input) {
@@ -265,12 +273,14 @@ export async function validateArticleMedia(env, input) {
     const raw=String(input[field] || '').trim(), url=mediaUrl(raw);
     if (raw && !url) throw new MediaInputError('نشانی عکس یا فیلم باید HTTPS یا فایل بارگذاری‌شده تحریریه باشد.');
     const match=url.match(MEDIA_PATH);
+    if (kind === 'image') input.image_generated = false;
     if (match) {
       const row=await env.DB.prepare('SELECT value FROM site_settings WHERE key=?').bind('media_file:'+match[1]).first();
       let metadata;
       try { metadata=JSON.parse(row?.value||'{}'); } catch { metadata={}; }
       if(metadata.kind!==kind) throw new MediaInputError('فایل انتخاب‌شده برای این بخش معتبر نیست.');
       if(kind==='video') input.video_type=metadata.mime;
+      if(kind==='image') input.image_generated=metadata.generated_by==='workers-ai';
     }
     input[field]=url;
   }
@@ -340,3 +350,4 @@ export async function serveMedia(request, env, id, authenticated=false) {
   for(const name of ['Content-Length','Content-Range','ETag','Last-Modified']) if(response.headers.has(name))headers.set(name,response.headers.get(name));
   return new Response(request.method==='HEAD'?null:response.body,{status:response.status,headers});
 }
+

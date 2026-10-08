@@ -49,7 +49,7 @@ const CATEGORY_SEED = Object.entries(CATEGORY_LABELS)
   .filter(([slug]) => slug !== "general")
   .map(([slug, name], i) => ({ slug, name, sort_order: (i + 1) * 10 }));
 
-let initialized = false;
+const initializedDatabases = new WeakMap();
 
 export function hasDatabase(env) {
   return Boolean(env?.DB);
@@ -57,15 +57,20 @@ export function hasDatabase(env) {
 
 export async function ensureSchema(env) {
   if (!hasDatabase(env)) return false;
-  if (initialized) return true;
-  for (const sql of INIT_SQL) await env.DB.prepare(sql).run();
-  for (const c of CATEGORY_SEED) {
-    await env.DB.prepare(
-      `INSERT OR IGNORE INTO categories (slug, name, sort_order) VALUES (?, ?, ?)`
-    ).bind(c.slug, c.name, c.sort_order).run();
+  if (!initializedDatabases.has(env.DB)) {
+    const setup = (async () => {
+      for (const sql of INIT_SQL) await env.DB.prepare(sql).run();
+      for (const c of CATEGORY_SEED) {
+        await env.DB.prepare(
+          `INSERT OR IGNORE INTO categories (slug, name, sort_order) VALUES (?, ?, ?)`
+        ).bind(c.slug, c.name, c.sort_order).run();
+      }
+      return true;
+    })();
+    initializedDatabases.set(env.DB, setup);
+    setup.catch(() => initializedDatabases.delete(env.DB));
   }
-  initialized = true;
-  return true;
+  return await initializedDatabases.get(env.DB);
 }
 
 export function makeSlug(title) {
@@ -103,8 +108,17 @@ class EditionInputError extends Error { status = 400; }
 function articleMetadata(value = '{}') {
   try {
     const data = JSON.parse(value);
-    return { author_name:typeof data.author_name === 'string' ? data.author_name.slice(0,120) : '', format:['analysis','report'].includes(data.format) ? data.format : 'news', video_url:typeof data.video_url==='string' ? data.video_url.slice(0,2048) : '',video_type:['video/mp4','video/webm'].includes(data.video_type)?data.video_type:'video/mp4',video_caption:typeof data.video_caption==='string'?data.video_caption.slice(0,240):'' };
-  } catch { return {author_name:'',format:'news',video_url:'',video_type:'video/mp4',video_caption:''}; }
+    return {
+      author_name:typeof data.author_name === 'string' ? data.author_name.slice(0,120) : '',
+      format:['analysis','report'].includes(data.format) ? data.format : 'news',
+      video_url:typeof data.video_url==='string' ? data.video_url.slice(0,2048) : '',
+      video_type:['video/mp4','video/webm'].includes(data.video_type)?data.video_type:'video/mp4',
+      video_caption:typeof data.video_caption==='string'?data.video_caption.slice(0,240):'',
+      image_caption:typeof data.image_caption==='string'?data.image_caption.slice(0,400):'',
+      image_alt:typeof data.image_alt==='string'?data.image_alt.slice(0,240):'',
+      image_generated:data.image_generated===true,
+    };
+  } catch { return {author_name:'',format:'news',video_url:'',video_type:'video/mp4',video_caption:'',image_caption:'',image_alt:'',image_generated:false}; }
 }
 
 async function metadataMap(env) {
@@ -154,7 +168,7 @@ async function editionArticles(env, slugs) {
 }
 
 async function saveArticleMetadata(env, id, input) {
-  if (!['author_name','format','video_url','video_type','video_caption'].some(key=>Object.hasOwn(input,key))) return;
+  if (!['author_name','format','video_url','video_type','video_caption','image_caption','image_alt','image_generated'].some(key=>Object.hasOwn(input,key))) return;
   const row = await env.DB.prepare('SELECT value FROM site_settings WHERE key=?').bind('article_meta:' + id).first();
   const previous = articleMetadata(row?.value);
   const data = {
@@ -163,6 +177,9 @@ async function saveArticleMetadata(env, id, input) {
     video_url:Object.hasOwn(input,'video_url') ? String(input.video_url || '').trim().slice(0,2048) : previous.video_url,
     video_type:Object.hasOwn(input,'video_type') ? (['video/mp4','video/webm'].includes(input.video_type) ? input.video_type : 'video/mp4') : previous.video_type,
     video_caption:Object.hasOwn(input,'video_caption') ? normalizePersianText(input.video_caption || '').slice(0,240) : previous.video_caption,
+    image_caption:Object.hasOwn(input,'image_caption') ? normalizePersianText(input.image_caption || '').slice(0,400) : previous.image_caption,
+    image_alt:Object.hasOwn(input,'image_alt') ? normalizePersianText(input.image_alt || '').slice(0,240) : previous.image_alt,
+    image_generated:Object.hasOwn(input,'image_generated') ? input.image_generated===true : previous.image_generated,
   };
   await env.DB.prepare('INSERT INTO site_settings (key,value,updated_at) VALUES (?,?,CURRENT_TIMESTAMP) ON CONFLICT(key) DO UPDATE SET value=excluded.value,updated_at=CURRENT_TIMESTAMP').bind('article_meta:' + id, JSON.stringify(data)).run();
 }
@@ -206,11 +223,24 @@ export async function getArticle(env, slug, increment = true) {
   return article;
 }
 
-export async function listByCategory(env, category, limit = 30) {
+export async function listByCategory(env, category, limit = 30, offset = 0) {
   if (!(await ensureSchema(env))) return [];
-  const r = await env.DB.prepare(`SELECT * FROM articles WHERE ${publishedWhere()} AND category=? ORDER BY published_at DESC LIMIT ?`).bind(category, limit).all();
+  const r = await env.DB.prepare(`SELECT * FROM articles WHERE ${publishedWhere()} AND category=? ORDER BY published_at DESC, id DESC LIMIT ? OFFSET ?`).bind(category, limit, offset).all();
   const metadata = await metadataMap(env);
   return (r.results || []).map(article => ({...article,...(metadata.get('article_meta:' + article.id) || {author_name:'',format:'news'})}));
+}
+
+export async function listPublishedArticles(env, limit = 17, offset = 0) {
+  if (!(await ensureSchema(env))) return [];
+  const rows = await env.DB.prepare(`SELECT * FROM articles WHERE ${publishedWhere()} ORDER BY published_at DESC, id DESC LIMIT ? OFFSET ?`).bind(limit, offset).all();
+  const metadata = await metadataMap(env);
+  return (rows.results || []).map(article => ({...article,...(metadata.get('article_meta:' + article.id) || {})}));
+}
+
+export async function publicSitemapArticles(env) {
+  if (!(await ensureSchema(env))) return [];
+  const rows = await env.DB.prepare(`SELECT slug,published_at,updated_at FROM articles WHERE ${publishedWhere()} ORDER BY published_at DESC LIMIT 50000`).all();
+  return rows.results || [];
 }
 
 export async function searchArticles(env, q, limit = 30) {
@@ -325,3 +355,4 @@ export async function deleteArticle(env, id) {
   await env.DB.prepare('DELETE FROM site_settings WHERE key=?').bind('article_meta:' + id).run();
   return { id };
 }
+

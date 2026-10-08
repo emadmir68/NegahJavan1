@@ -1,5 +1,5 @@
 import { authConfigured, passwordMatches, createSession, verifySession, sessionCookie, clearSessionCookie, sameOrigin } from './auth.js';
-import { CATEGORY_LABELS, getHomeData, getHomeEdition, saveHomeEdition, getArticle, listByCategory, searchArticles, adminStats, adminArticles, createArticle, updateArticle, deleteArticle, hasDatabase } from './db.js';
+import { CATEGORY_LABELS, getHomeData, getHomeEdition, saveHomeEdition, getArticle, listByCategory, listPublishedArticles, publicSitemapArticles, searchArticles, adminStats, adminArticles, createArticle, updateArticle, deleteArticle, hasDatabase } from './db.js';
 import { editorialPage } from './ui.js';
 import { homePage, articlePage, listingPage, notFoundPage } from './ui-public.js';
 import { vazirmatnBase64 } from './font.js';
@@ -7,6 +7,8 @@ import { coverSvg as renderCoverSvg } from './cover.js';
 import { coverImages } from './cover-images.js';
 import { wordmarkSvg, wordmarkSvgV1, monogramSvg } from './brand-identity.js';
 import { MEDIA_PATH, MediaInputError, mediaUrl, mediaSettings, saveMediaSettings, uploadMedia, serveMedia, validateArticleMedia, attachMediaRenditions } from './media-storage.js';
+import { editorialAiStatus, rewriteArticle, generateArticleImage, EditorialAiError } from './editor-ai.js';
+import { SITE_ORIGIN, sitemapXml, newsFeedXml } from './seo.js';
 
 const html = (body, status=200) => new Response(body, { status, headers: { 'Content-Type':'text/html; charset=utf-8', 'Cache-Control':'no-store', 'X-Content-Type-Options':'nosniff', 'Referrer-Policy':'strict-origin-when-cross-origin' } });
 const json = (data, status=200, headers={}) => new Response(JSON.stringify(data), { status, headers: { 'Content-Type':'application/json; charset=utf-8', 'Cache-Control':'no-store', 'X-Content-Type-Options':'nosniff', ...headers } });
@@ -87,8 +89,9 @@ function smartPrepare(data={}) {
   return {...data,title,body,excerpt,category,...('hero_image' in data ? {hero_image:mediaUrl(data.hero_image)} : {}),source_name,source_url};
 }
 
-function xmlEscape(value="") {
-  return String(value).replace(/[<>&"']/g, c => ({"<":"&lt;",">":"&gt;","&":"&amp;",'"':"&quot;","'":"&apos;"}[c]));
+function archivePage(url) {
+  const page = Number(url.searchParams.get('page') || 1);
+  return Number.isSafeInteger(page) && page > 0 ? Math.min(page, 100000) : 1;
 }
 
 function coverSvg(article) {
@@ -138,7 +141,17 @@ export default {
         const authenticated = await requireEditor(request, env);
         if (!authenticated) return json({ authenticated:false, authConfigured:authConfigured(env), databaseConfigured:hasDatabase(env) });
         const [stats, articles, edition, media] = await Promise.all([adminStats(env), adminArticles(env), getHomeEdition(env), mediaSettings(env)]);
-        return json({ authenticated:true, authConfigured:true, databaseConfigured:hasDatabase(env), stats, articles, edition, media });
+        return json({ authenticated:true, authConfigured:true, databaseConfigured:hasDatabase(env), stats, articles, edition, media, ai:editorialAiStatus(env) });
+      }
+
+      if (['/api/admin/ai-rewrite','/api/admin/ai-image'].includes(path) && request.method === 'POST') {
+        if (request.headers.get('Origin') !== url.origin) return json({error:'Origin نامعتبر است'},403);
+        if (!(await requireEditor(request,env))) return json({error:'نیاز به ورود دارید'},401);
+        if (!hasDatabase(env)) return json({error:'دیتابیس در دسترس نیست'},503);
+        const input = await bodyJson(request);
+        return path.endsWith('ai-image')
+          ? json({ok:true,...await generateArticleImage(env,input)})
+          : json({ok:true,prepared:await rewriteArticle(env,input)});
       }
 
       if (['/api/admin/media','/api/admin/media-settings'].includes(path) && ['POST','PUT'].includes(request.method)) {
@@ -212,8 +225,9 @@ export default {
       if (path === '/' && request.method === 'GET') return html(homePage(await getHomeData(env)));
 
       if (path === '/latest' && request.method === 'GET') {
-        const data = await getHomeData(env);
-        return html(listingPage('تازه‌ترین خبرها', data.latest));
+        const page = archivePage(url), size = 16;
+        const articles = await listPublishedArticles(env,size+1,(page-1)*size);
+        return html(listingPage('تازه‌ترین خبرها',articles.slice(0,size),'',{path:'/latest',page,hasNext:articles.length>size}));
       }
 
       const news = path.match(/^\/news\/(.+)$/);
@@ -228,26 +242,32 @@ export default {
         const slug = category[1];
         const label = CATEGORY_LABELS[slug];
         if (!label) return html(notFoundPage(), 404);
-        return html(listingPage(label, await listByCategory(env, slug)));
+        const page = archivePage(url), size = 30;
+        const articles = await listByCategory(env,slug,size+1,(page-1)*size);
+        return html(listingPage(label,articles.slice(0,size),'',{path:'/category/'+slug,page,hasNext:articles.length>size}));
       }
 
       if (path === '/search' && request.method === 'GET') {
-        const q = (url.searchParams.get('q') || '').trim();
-        return html(listingPage('جست‌وجو', q ? await searchArticles(env, q) : [], q));
+        const q = (url.searchParams.get('q') || '').trim().slice(0,200);
+        return html(listingPage('جست‌وجو', q ? await searchArticles(env, q) : [], q, {path:'/search'}));
       }
 
       if (path === '/robots.txt') {
-        return new Response(`User-agent: *\nAllow: /\nDisallow: /editorial\nSitemap: ${url.origin}/sitemap.xml\n`, { headers:{ 'Content-Type':'text/plain; charset=utf-8' } });
+        return new Response(`User-agent: *\nAllow: /\nDisallow: /editorial\nDisallow: /api/\nSitemap: ${SITE_ORIGIN}/sitemap.xml\n`, { headers:{ 'Content-Type':'text/plain; charset=utf-8' } });
       }
 
       if (path === '/sitemap.xml') {
-        const base = url.origin;
-        const xml = `<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"><url><loc>${base}/</loc></url></urlset>`;
+        const xml = sitemapXml(await publicSitemapArticles(env),CATEGORY_LABELS);
         return new Response(xml, { headers:{ 'Content-Type':'application/xml; charset=utf-8' } });
+      }
+
+      if (path === '/feed.xml' && request.method === 'GET') {
+        return new Response(newsFeedXml(await listPublishedArticles(env,50)), {headers:{'Content-Type':'application/rss+xml; charset=utf-8'}});
       }
 
       return html(notFoundPage(), 404);
     } catch (error) {
+      if (error instanceof EditorialAiError) return json({error:error.message},error.status);
       if (error instanceof MediaInputError) return path.startsWith('/api/') ? json({error:error.message,...(error.code ? {code:error.code} : {})},error.status) : new Response('Media unavailable',{status:error.status,headers:{'Cache-Control':'no-store'}});
       console.error('NegahJavan error', error);
       if (path.startsWith('/api/')) return json({ error:error?.message || 'خطای داخلی سرور' }, 500);
@@ -255,3 +275,4 @@ export default {
     }
   }
 };
+

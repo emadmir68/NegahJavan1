@@ -8,6 +8,7 @@ import { articlePage, homePage } from '../src/ui-public.js';
 import { articleStructuredData, jsonLd } from '../src/seo.js';
 import { imageTransformPlan } from '../src/image-tools.js';
 import { editorEnhancementScript } from '../src/editor-enhancements.js';
+import { mediaEditorScript } from '../src/media-editor.js';
 import { testEnv, editorRequest } from './helpers.mjs';
 
 test('schema setup is independent for each database and shared by concurrent requests',async()=>{
@@ -173,4 +174,24 @@ test('editor requires review before applying a rewrite and discards responses af
   assert.equal(elements.body.value,'ویرایش دستی تازه');assert.equal(elements.aiProposal.hidden,true);
   pending=elements.aiRewrite.onclick();vm.runInContext('resetAiDraft();editing=42;',context);elements.body.value='خبر دیگری';resolve(result);await pending;
   assert.equal(elements.body.value,'خبر دیگری');assert.equal(elements.aiProposal.hidden,true);
+});
+
+
+test('clearing or replacing a video discards pending renditions from its previous source',async()=>{
+  const elements={};
+  const $=selector=>elements[selector.slice(1)] ||= {value:'',disabled:false,hidden:false,files:[],textContent:'',classList:{toggle(){},remove(){},add(){}},addEventListener(){},replaceChildren(){},append(){}};
+  class Upload {
+    upload={};responseText=JSON.stringify({media:{url:'/media/12345678-1234-1234-1234-123456789abc.mp4',kind:'video',mime:'video/mp4'}});status=201;
+    open(){}setRequestHeader(){}abort(){}send(){queueMicrotask(()=>this.onload())}
+  }
+  const context=vm.createContext({$,document:{createElement:()=>({})},URL,XMLHttpRequest:Upload,api:async()=>({}),imageGenerated:false,editorAi:{busy:false},refreshAiButtons(){},updatePreview(){},prepareNewsPhoto:async file=>({file})});
+  vm.runInContext(mediaEditorScript,context);
+  $('#video_url').value='/media/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa.mp4';
+  vm.runInContext("mediaConnection={configured:true};videoRenditions.mp4.file={name:'old.mp4'};",context);
+  assert.equal(vm.runInContext('hasPendingMedia()',context),true);
+  elements.videoClear.onclick();assert.equal(vm.runInContext('hasPendingMedia()',context),false);
+  vm.runInContext("pendingMedia.video.file={name:'new.mp4',size:32,type:'video/mp4'};videoRenditions.webm.file={name:'old.webm'};",context);
+  await elements.videoUpload.onclick();
+  assert.equal($('#video_url').value,'/media/12345678-1234-1234-1234-123456789abc.mp4');
+  assert.equal(vm.runInContext('hasPendingMedia()',context),false);
 });

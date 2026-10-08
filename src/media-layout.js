@@ -152,6 +152,27 @@ export const videoPreviewScript = `
   videos.forEach(video => {
     const frame = video.closest('[data-news-frame]');
     const canvas = frame?.querySelector('[data-video-backdrop]');
+    const fallback = video.querySelector('[data-video-fallback]');
+    const notice = frame?.querySelector('[data-card-video-error]');
+    const playButton = frame?.querySelector('[data-card-play]');
+    video.addEventListener('play', () => { video.dataset.playRequested = 'true'; });
+    video.addEventListener('loadeddata', () => { if (notice) notice.hidden = true; });
+    video.addEventListener('error', () => {
+      if (!fallback || video.dataset.compatibilityAttempted || video.currentSrc === fallback.src || !video.canPlayType('video/webm')) {
+        if (notice) notice.hidden = false;
+        return;
+      }
+      const resume = video.dataset.playRequested === 'true';
+      video.dataset.compatibilityAttempted = 'true';
+      if (notice) notice.hidden = true;
+      if (playButton) playButton.hidden = false;
+      frame?.classList.remove('is-playing');
+      video.src = fallback.src;
+      if (resume) video.addEventListener('loadeddata', () => {
+        video.play().catch(error => { if (error.name !== 'AbortError' && notice) notice.hidden = false; });
+      }, {once:true});
+      video.load();
+    });
     if (!canvas) return;
     let captured = false;
     let previewSeek = false;
@@ -170,14 +191,14 @@ export const videoPreviewScript = `
       context.drawImage(video, (960 - video.videoWidth * contain) / 2, (540 - video.videoHeight * contain) / 2, video.videoWidth * contain, video.videoHeight * contain);
       canvas.hidden = false;
       captured = true;
-      if (!video.hasAttribute('poster')) {
-        try { video.poster = canvas.toDataURL('image/jpeg', .82); } catch { /* External videos may not allow canvas export. */ }
+      if (video.dataset.autoPoster === 'true' || !video.hasAttribute('poster')) {
+        try { video.poster = canvas.toDataURL('image/jpeg', .82); delete video.dataset.autoPoster; } catch { /* Keep the static cover when cross-origin export is unavailable. */ }
       }
       if (previewSeek && video.paused) video.currentTime = 0;
       previewSeek = false;
     };
     video.addEventListener('loadedmetadata', () => {
-      if (!video.hasAttribute('poster') && video.paused && video.currentTime === 0 && Number.isFinite(video.duration) && video.duration > 0) {
+      if ((video.dataset.autoPoster === 'true' || !video.hasAttribute('poster')) && video.paused && video.currentTime === 0 && Number.isFinite(video.duration) && video.duration > 0) {
         previewSeek = true;
         video.currentTime = Math.min(.5, video.duration / 2);
       }

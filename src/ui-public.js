@@ -4,7 +4,8 @@ import { publicStyles, publicScript } from './design-system.js';
 import { icon, brandWordmark, signatureArt } from './design-art.js';
 import { magazineStyles, readerScript } from './magazine-design.js';
 import { mediaLayoutStyles, videoPreviewScript } from './media-layout.js';
-import { mediaUrl } from './media-storage.js';
+import { mediaUrl, MEDIA_PATH } from './media-storage.js';
+import { coverVariant } from './cover.js';
 
 const esc = (value = '') => String(value ?? '').replace(/[&<>"']/g, character => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[character]));
 const number = value => Number(value || 0).toLocaleString('fa-IR');
@@ -43,12 +44,26 @@ function safeHttps(value) {
 const articleUrl = article => '/news/' + encodeURIComponent(article.slug);
 const categoryKey = article => CATEGORY_LABELS[article?.category] ? article.category : 'general';
 const categoryUrl = key => '/category/' + encodeURIComponent(key);
-const coverUrl = article => '/cover/' + encodeURIComponent(article.slug) + '.svg?v=signature-1';
+const coverUrl = article => '/assets/cover-' + categoryKey(article) + '-' + coverVariant(article.title) + '-v2.png';
+
+function videoSources(article) {
+  const url = mediaUrl(article.video_url);
+  if (!url) return '';
+  const type = article.video_type === 'video/webm' ? 'video/webm' : 'video/mp4';
+  const fallback = MEDIA_PATH.test(url) && url.endsWith('.mp4')
+    ? `<source src="${esc(url)}?format=webm" type="video/webm" data-video-fallback>` : '';
+  return `<source src="${esc(url)}" type="${type}">${fallback}`;
+}
+
+function videoPoster(article) {
+  const photo = mediaUrl(article.hero_image);
+  return ` poster="${esc(photo || coverUrl(article))}"${photo ? '' : ' data-auto-poster="true"'}`;
+}
 
 function media(article, {className = 'story-media', eager = false} = {}) {
   const fallback = coverUrl(article);
   const image = mediaUrl(article.hero_image);
-  return `<img class="${className}" src="${esc(image || fallback)}" data-graphic-cover="${!image}" ${image ? `data-fallback="${esc(fallback)}"` : ''} alt="" width="1200" height="675" ${eager ? 'fetchpriority="high" loading="eager"' : 'loading="lazy"'} decoding="async">`;
+  return `<img class="${className}" src="${esc(image || fallback)}" data-graphic-cover="${!image}" ${image ? `data-fallback="${esc(fallback)}"` : ''} alt="" width="1200" height="675" ${eager || !image ? 'fetchpriority="high" loading="eager"' : 'loading="lazy"'} decoding="async">`;
 }
 
 function cardMedia(article, {className = '', eager = false, label = ''} = {}) {
@@ -56,7 +71,7 @@ function cardMedia(article, {className = '', eager = false, label = ''} = {}) {
   const video = mediaUrl(article.video_url);
   if (!video) return `<a class="${classes}" data-news-frame href="${articleUrl(article)}" tabindex="-1" aria-hidden="true">${media(article,{eager})}${label}</a>`;
   const poster = mediaUrl(article.hero_image);
-  return `<div class="${classes} story-video" data-news-frame><canvas class="video-backdrop" data-video-backdrop aria-hidden="true" hidden></canvas><video class="story-media" controls playsinline preload="${eager && !poster ? 'metadata' : 'none'}"${poster ? ` poster="${esc(poster)}"` : ''} tabindex="0" aria-label="ویدئوی خبر: ${esc(article.title)}" data-card-video data-video-preview><source src="${esc(video)}" type="${article.video_type === 'video/webm' ? 'video/webm' : 'video/mp4'}">مرورگر شما امکان پخش این ویدئو را ندارد.</video><span class="story-video-label">ویدئو</span>${label}<button class="story-video-play" type="button" aria-label="پخش ویدئوی خبر: ${esc(article.title)}" data-card-play hidden>${icon('play')}<span>پخش ویدئو</span></button><p class="story-video-error" role="status" data-card-video-error hidden>پخش ویدئو انجام نشد. <a href="${articleUrl(article)}">مشاهدهٔ خبر ${icon('arrow')}</a></p></div>`;
+  return `<div class="${classes} story-video" data-news-frame><canvas class="video-backdrop" data-video-backdrop aria-hidden="true" hidden></canvas><video class="story-media" controls playsinline preload="${eager && !poster ? 'metadata' : 'none'}"${videoPoster(article)} tabindex="0" aria-label="ویدئوی خبر: ${esc(article.title)}" data-card-video data-video-preview>${videoSources(article)}مرورگر شما امکان پخش این ویدئو را ندارد.</video><span class="story-video-label">ویدئو</span>${label}<button class="story-video-play" type="button" aria-label="پخش ویدئوی خبر: ${esc(article.title)}" data-card-play hidden>${icon('play')}<span>پخش ویدئو</span></button><p class="story-video-error" role="status" data-card-video-error hidden>پخش ویدئو انجام نشد. <a href="${esc(video)}" download>دریافت فیلم ${icon('arrow')}</a></p></div>`;
 }
 
 function shell(title, body, options = {}) {
@@ -213,7 +228,7 @@ export function articlePage(article) {
   const source = article.source_name || sourceUrl ? `<div class="source">منبع روایت: ${sourceUrl ? `<a href="${esc(sourceUrl)}" rel="noopener noreferrer" target="_blank">${esc(article.source_name || new URL(sourceUrl).hostname)}</a>` : esc(article.source_name)}</div>` : '';
   const updated = article.updated_at && new Date(dateValue(article.updated_at)) - new Date(dateValue(article.published_at)) >= 60000 ? `<span>به‌روزرسانی: <time datetime="${esc(dateValue(article.updated_at))}">${dateFa(article.updated_at,true)}</time></span>` : '';
   const videoUrl = mediaUrl(article.video_url);
-  const video = videoUrl ? `<figure class="reader-video reader-video-lead"><span class="reader-video-label">ویدئوی خبر</span><div class="media-link story-video reader-video-frame" data-news-frame><canvas class="video-backdrop" data-video-backdrop aria-hidden="true" hidden></canvas><video controls playsinline preload="metadata"${hasPhoto ? ` poster="${esc(mediaUrl(article.hero_image))}"` : ''} aria-label="ویدئوی خبر: ${esc(article.title)}" data-video-preview><source src="${esc(videoUrl)}" type="${article.video_type==='video/webm'?'video/webm':'video/mp4'}">مرورگر شما امکان پخش این ویدئو را ندارد.</video></div>${article.video_caption ? `<figcaption>${esc(article.video_caption)}</figcaption>` : ''}<a class="text-link" href="${esc(videoUrl)}" download>دریافت ویدئو ${icon('arrow')}</a></figure>` : '';
+  const video = videoUrl ? `<figure class="reader-video reader-video-lead"><span class="reader-video-label">ویدئوی خبر</span><div class="media-link story-video reader-video-frame" data-news-frame><canvas class="video-backdrop" data-video-backdrop aria-hidden="true" hidden></canvas><video controls playsinline preload="metadata"${videoPoster(article)} aria-label="ویدئوی خبر: ${esc(article.title)}" data-video-preview>${videoSources(article)}مرورگر شما امکان پخش این ویدئو را ندارد.</video><p class="story-video-error" role="status" data-card-video-error hidden>پخش ویدئو انجام نشد. فایل فیلم را از لینک زیر دریافت کنید.</p></div>${article.video_caption ? `<figcaption>${esc(article.video_caption)}</figcaption>` : ''}<a class="text-link" href="${esc(videoUrl)}" download>دریافت ویدئو ${icon('arrow')}</a></figure>` : '';
   const cover = video || `<figure class="article-cover ${hasPhoto ? '' : 'article-cover-graphic'}"><div class="media-link article-cover-frame" data-news-frame>${media(article,{className:'article-photo',eager:true})}</div>${hasPhoto ? '' : '<figcaption>تصویر گرافیکی تحریریه نگاه جوان</figcaption>'}</figure>`;
   const author = article.author_name ? `<div class="reader-author"><span class="author-initial" aria-hidden="true">${esc(article.author_name.slice(0,1))}</span><span><small>نویسنده</small><b>${esc(article.author_name)}</b></span></div>` : '<div class="reader-publisher">روایت نگاه جوان</div>';
   const tools = `<div class="article-tools"><div class="reader-font-controls" role="group" aria-label="اندازه متن خبر"><button type="button" data-reader-size="smaller" aria-label="کوچک‌تر کردن متن">A−</button><output data-reader-size-label aria-live="polite">۱۰۰٪</output><button type="button" data-reader-size="larger" aria-label="بزرگ‌تر کردن متن">A+</button></div><button class="icon-button" type="button" aria-label="ذخیره خبر در این مرورگر" aria-pressed="false" data-save-article>${icon('bookmark')}</button><button class="icon-button" type="button" aria-label="اشتراک‌گذاری یا کپی لینک خبر" data-share-article>${icon('share')}</button></div>`;

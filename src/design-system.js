@@ -42,6 +42,29 @@ export const publicScript = `
     image.addEventListener('error', fallback);
     if (image.complete && !image.naturalWidth) fallback();
   });
+  const cardVideos = [...document.querySelectorAll('[data-card-video]')];
+  cardVideos.forEach(video => {
+    const card = video.closest('.story-video');
+    const button = card.querySelector('[data-card-play]');
+    const errorNotice = card.querySelector('[data-card-video-error]');
+    const showError = () => { card.classList.remove('is-playing'); button.hidden = true; errorNotice.hidden = false; };
+    button.hidden = false;
+    button.addEventListener('click', () => {
+      errorNotice.hidden = true;
+      video.focus({preventScroll:true});
+      video.play().catch(error => { if (error.name !== 'AbortError') showError(); });
+    });
+    video.addEventListener('play', () => {
+      cardVideos.forEach(other => { if (other !== video && !other.paused) other.pause(); });
+      card.classList.add('is-playing');
+      button.hidden = true;
+      errorNotice.hidden = true;
+    });
+    const paused = () => { card.classList.remove('is-playing'); button.hidden = Boolean(video.error); };
+    video.addEventListener('pause', paused);
+    video.addEventListener('ended', paused);
+    video.addEventListener('error', showError);
+  });
   const notice = document.querySelector('[data-action-notice]');
   const announce = (text) => { if (notice) notice.textContent = text; };
   const saveButton = document.querySelector('[data-save-article]');

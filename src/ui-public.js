@@ -50,6 +50,14 @@ function media(article, {className = 'story-media', eager = false} = {}) {
   return `<img class="${className}" src="${esc(image || fallback)}" data-graphic-cover="${!image}" ${image ? `data-fallback="${esc(fallback)}"` : ''} alt="" width="1200" height="675" ${eager ? 'fetchpriority="high" loading="eager"' : 'loading="lazy"'} decoding="async">`;
 }
 
+function cardMedia(article, {className = '', eager = false, label = ''} = {}) {
+  const classes = 'media-link' + (className ? ' ' + className : '');
+  const video = mediaUrl(article.video_url);
+  if (!video) return `<a class="${classes}" href="${articleUrl(article)}" tabindex="-1" aria-hidden="true">${media(article,{eager})}${label}</a>`;
+  const poster = mediaUrl(article.hero_image) || coverUrl(article);
+  return `<div class="${classes} story-video"><video class="story-media" controls playsinline preload="none" poster="${esc(poster)}" tabindex="0" aria-label="ویدئوی خبر: ${esc(article.title)}" data-card-video><source src="${esc(video)}" type="${article.video_type === 'video/webm' ? 'video/webm' : 'video/mp4'}">مرورگر شما امکان پخش این ویدئو را ندارد.</video><span class="story-video-label">ویدئو</span>${label}<button class="story-video-play" type="button" aria-label="پخش ویدئوی خبر: ${esc(article.title)}" data-card-play hidden>${icon('play')}<span>پخش ویدئو</span></button><p class="story-video-error" role="status" data-card-video-error hidden>پخش ویدئو انجام نشد. <a href="${articleUrl(article)}">مشاهدهٔ خبر ${icon('arrow')}</a></p></div>`;
+}
+
 function shell(title, body, options = {}) {
   const description = options.description || 'نگاه جوان؛ خبر، تحلیل و روایت روشن تحولات ایران و جهان برای نسل امروز.';
   return `<!doctype html><html lang="fa" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#f5f8f9"><meta name="negahjavan-design" content="media-20261007"><meta name="negahjavan-brand" content="wordmark-red-v2"><link rel="icon" href="/assets/negahjavan-mark-v1.svg" type="image/svg+xml"><link rel="preload" href="/assets/vazirmatn-v33.woff2" as="font" type="font/woff2" crossorigin><title>${esc(title)} | نگاه جوان</title><meta name="description" content="${esc(description)}">${options.noindex ? '<meta name="robots" content="noindex,follow">' : ''}<meta property="og:locale" content="fa_IR"><meta property="og:site_name" content="نگاه جوان"><meta property="og:title" content="${esc(title)}"><meta property="og:description" content="${esc(description)}"><style>${publicStyles}${magazineStyles}</style></head><body id="top" data-design="media-20261007"><a class="skip-link" href="#content">رفتن به محتوای اصلی</a>${body}<script>${publicScript}${readerScript}</script></body></html>`;
@@ -75,11 +83,11 @@ function metadata(article) {
 
 function storyCard(article) {
   const url = articleUrl(article);
-  return `<article class="story-card"><a class="media-link" href="${url}" tabindex="-1" aria-hidden="true">${media(article)}</a>${metadata(article)}<h3><a href="${url}">${esc(article.title)}</a></h3>${article.excerpt ? `<p class="excerpt">${esc(article.excerpt)}</p>` : ''}</article>`;
+  return `<article class="story-card">${cardMedia(article)}${metadata(article)}<h3><a href="${url}">${esc(article.title)}</a></h3>${article.excerpt ? `<p class="excerpt">${esc(article.excerpt)}</p>` : ''}</article>`;
 }
 
 function leadStory(article) {
-  return `<article class="lead-story"><a class="media-link" href="${articleUrl(article)}" tabindex="-1" aria-hidden="true">${media(article)}</a>${metadata(article)}<h3><a href="${articleUrl(article)}">${esc(article.title)}</a></h3>${article.excerpt ? `<p class="excerpt">${esc(article.excerpt)}</p>` : ''}</article>`;
+  return `<article class="lead-story">${cardMedia(article)}${metadata(article)}<h3><a href="${articleUrl(article)}">${esc(article.title)}</a></h3>${article.excerpt ? `<p class="excerpt">${esc(article.excerpt)}</p>` : ''}</article>`;
 }
 
 function streamStory(article) {
@@ -112,11 +120,12 @@ function brandHero(compact = false) {
 }
 
 function featuredHero(article) {
-  return `<article class="frontpage-lead"><a class="media-link frontpage-photo" href="${articleUrl(article)}" tabindex="-1" aria-hidden="true">${media(article, {eager:true})}<span class="focus-label">${article.status === 'breaking' ? 'خبر فوری' : 'در کانون خبر'}</span></a><div class="frontpage-lead-copy">${metadata(article)}<h1 id="hero-title"><a href="${articleUrl(article)}">${esc(article.title)}</a></h1>${article.excerpt ? `<p>${esc(article.excerpt)}</p>` : ''}<a class="text-link" href="${articleUrl(article)}">روایت کامل ${icon('arrow')}</a></div></article>`;
+  const label = `<span class="focus-label">${article.status === 'breaking' ? 'خبر فوری' : 'در کانون خبر'}</span>`;
+  return `<article class="frontpage-lead">${cardMedia(article,{className:'frontpage-photo',eager:true,label})}<div class="frontpage-lead-copy">${metadata(article)}<h1 id="hero-title"><a href="${articleUrl(article)}">${esc(article.title)}</a></h1>${article.excerpt ? `<p>${esc(article.excerpt)}</p>` : ''}<a class="text-link" href="${articleUrl(article)}">روایت کامل ${icon('arrow')}</a></div></article>`;
 }
 
 function complementStory(article) {
-  return `<article class="complement-story"><a class="media-link" href="${articleUrl(article)}" tabindex="-1" aria-hidden="true">${media(article)}</a>${metadata(article)}<h2><a href="${articleUrl(article)}">${esc(article.title)}</a></h2></article>`;
+  return `<article class="complement-story">${cardMedia(article)}${metadata(article)}<h2><a href="${articleUrl(article)}">${esc(article.title)}</a></h2></article>`;
 }
 
 function newsTimeline(articles) {

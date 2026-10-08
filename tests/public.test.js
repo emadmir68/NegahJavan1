@@ -25,6 +25,37 @@ test('article and search inputs cannot break out of HTML attributes or introduce
   assert.doesNotMatch(search, /value="" autofocus/);
 });
 
+test('published video stories play on home and archive cards without navigating to the article', () => {
+  const first={title:'فیلم نخست',slug:'first-video',category:'technology',status:'published',body:'خبر دارای فیلم.',video_url:'/media/123e4567-e89b-12d3-a456-426614174000.mp4',video_type:'video/mp4'};
+  const second={...first,title:'فیلم دوم',slug:'second-video',hero_image:'https://images.example/poster.png',video_url:'https://videos.example/clip.webm',video_type:'video/webm'};
+  const page=homePage({latest:[first,second],editorPicks:[first]});
+  const lead=page.match(/<article class="frontpage-lead">([\s\S]*?)<div class="frontpage-lead-copy">/)[1];
+  assert.match(lead, /^<div class="media-link frontpage-photo story-video">/);
+  assert.match(lead, /<video[^>]+controls playsinline preload="none"[^>]+data-card-video/);
+  assert.match(lead, /poster="\/cover\/first-video\.svg/);
+  assert.match(lead, /<source src="\/media\/[^"]+\.mp4" type="video\/mp4">/);
+  assert.match(lead, /aria-label="پخش ویدئوی خبر: فیلم نخست"/);
+  assert.doesNotMatch(lead, /autoplay|aria-hidden="true"[^>]*><video|<a[^>]+class="media-link/);
+  const archive=listingPage('تازه‌ترین خبرها',[first,second]);
+  assert.equal((archive.match(/data-card-video>/g)||[]).length,2);
+  assert.match(archive, /poster="https:\/\/images\.example\/poster\.png"/);
+  assert.match(archive, /<source src="https:\/\/videos\.example\/clip\.webm" type="video\/webm">/);
+  assert.match(archive, /<h3><a href="\/news\/first-video">فیلم نخست<\/a><\/h3>/);
+  for(const script of page.matchAll(/<script>([\s\S]*?)<\/script>/g))new vm.Script(script[1]);
+});
+
+test('card videos preserve photo-only stories and reject unsafe video URLs and attributes', () => {
+  const base={title:'خبر',slug:'story',category:'technology',body:'متن خبر.',hero_image:'https://images.example/photo.png'};
+  const photo=listingPage('تازه‌ترین خبرها',[base]);
+  assert.match(photo, /<a class="media-link" href="\/news\/story"[^>]*><img/);
+  assert.doesNotMatch(photo, /<video\b|data-card-play hidden/);
+  const unsafe=listingPage('تازه‌ترین خبرها',[{...base,video_url:'javascript:alert(1)'}]);
+  assert.doesNotMatch(unsafe, /<video\b|src="javascript:/);
+  const escaped=listingPage('تازه‌ترین خبرها',[{...base,title:'" onfocus="alert(1)',video_url:'https://videos.example/clip.mp4',hero_image:'javascript:alert(1)'}]);
+  assert.match(escaped, /aria-label="ویدئوی خبر: &quot; onfocus=&quot;alert\(1\)"/);
+  assert.doesNotMatch(escaped, /aria-label="" onfocus|poster="javascript:/);
+});
+
 test('public font and latest news routes work without editorial authentication', async () => {
   const font = await worker.fetch(new Request('https://example.com/assets/vazirmatn-v33.woff2'),{});
   assert.equal(font.status,200);
